@@ -1,251 +1,352 @@
-// Protocol Buffers - Google's data interchange format
-// Copyright 2008 Google Inc.  All rights reserved.
-// https://developers.google.com/protocol-buffers/
+// Copyright 2018 Google LLC
 //
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-//     * Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//     * Redistributions in binary form must reproduce the above
-// copyright notice, this list of conditions and the following disclaimer
-// in the documentation and/or other materials provided with the
-// distribution.
-//     * Neither the name of Google Inc. nor the names of its
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// StatusOr<T> is the union of a Status object and a T
-// object. StatusOr models the concept of an object that is either a
-// usable value, or an error Status explaining why such a value is
-// not present. To this end, StatusOr<T> does not allow its Status
-// value to be Status::OK. Further, StatusOr<T*> does not allow the
-// contained pointer to be nullptr.
-//
-// The primary use-case for StatusOr<T> is as the return value of a
-// function which may fail.
-//
-// Example client usage for a StatusOr<T>, where T is not a pointer:
-//
-//  StatusOr<float> result = DoBigCalculationThatCouldFail();
-//  if (result.ok()) {
-//    float answer = result.ValueOrDie();
-//    printf("Big calculation yielded: %f", answer);
-//  } else {
-//    LOG(ERROR) << result.status();
-//  }
-//
-// Example client usage for a StatusOr<T*>:
-//
-//  StatusOr<Foo*> result = FooFactory::MakeNewFoo(arg);
-//  if (result.ok()) {
-//    std::unique_ptr<Foo> foo(result.ValueOrDie());
-//    foo->DoSomethingCool();
-//  } else {
-//    LOG(ERROR) << result.status();
-//  }
-//
-// Example client usage for a StatusOr<std::unique_ptr<T>>:
-//
-//  StatusOr<std::unique_ptr<Foo>> result = FooFactory::MakeNewFoo(arg);
-//  if (result.ok()) {
-//    std::unique_ptr<Foo> foo = result.ConsumeValueOrDie();
-//    foo->DoSomethingCool();
-//  } else {
-//    LOG(ERROR) << result.status();
-//  }
-//
-// Example factory implementation returning StatusOr<T*>:
-//
-//  StatusOr<Foo*> FooFactory::MakeNewFoo(int arg) {
-//    if (arg <= 0) {
-//      return ::util::Status(::util::error::INVALID_ARGUMENT,
-//                            "Arg must be positive");
-//    } else {
-//      return new Foo(arg);
-//    }
-//  }
-//
 #ifndef __INCLUDED_DA_UTIL_STATUSOR_H_
 #define __INCLUDED_DA_UTIL_STATUSOR_H_
 
+#include <stdexcept>
+#include <type_traits>
 #include <utility>
 
 #include <da/util/status.h>
 
 namespace da {
 namespace util {
-
+/**
+ * Holds a value or a `Status` indicating why there is no value.
+ *
+ * `StatusOr<T>` represents either a usable `T` value or a `Status` object
+ * explaining why a `T` value is not present. Typical usage of `StatusOr<T>`
+ * looks like usage of a smart pointer, or even a std::optional<T>, in that you
+ * first check its validity using a conversion to bool (or by calling
+ * `StatusOr::ok()`), then you may dereference the object to access the
+ * contained value. It is undefined behavior (UB) to dereference a
+ * `StatusOr<T>` that is not "ok". For example:
+ *
+ * @code
+ * StatusOr<Foo> foo = FetchFoo();
+ * if (!foo) {  // Same as !foo.ok()
+ *   // handle error and probably look at foo.status()
+ * } else {
+ *   foo->DoSomethingFooey();  // UB if !foo
+ * }
+ * @endcode
+ *
+ * Alternatively, you may call the `StatusOr::value()` member function,
+ * which is defined to throw an exception if there is no `T` value, or crash
+ * the program if exceptions are disabled. It is never UB to call
+ * `.value()`.
+ *
+ * @code
+ * StatusOr<Foo> foo = FetchFoo();
+ * foo.value().DoSomethingFooey();  // May throw/crash if there is no value
+ * @endcode
+ *
+ * Functions that can fail will often return a `StatusOr<T>` instead of
+ * returning an error code and taking a `T` out-param, or rather than directly
+ * returning the `T` and throwing an exception on error. StatusOr is used so
+ * that callers can choose whether they want to explicitly check for errors,
+ * crash the program, or throw exceptions. Since constructors do not have a
+ * return value, they should be designed in such a way that they cannot fail by
+ * moving the object's complex initialization logic into a separate factory
+ * function that itself can return a `StatusOr<T>`. For example:
+ *
+ * @code
+ * class Bar {
+ *  public:
+ *   Bar(Arg arg);
+ *   ...
+ * };
+ * StatusOr<Bar> MakeBar() {
+ *   ... complicated logic that might fail
+ *   return Bar(std::move(arg));
+ * }
+ * @endcode
+ *
+ * `StatusOr<T>` supports equality comparisons if the underlying type `T` does.
+ *
+ * TODO(...) - the current implementation is fairly naive with respect to `T`,
+ *   it is unlikely to work correctly for reference types, types without default
+ *   constructors, arrays.
+ *
+ * @tparam T the type of the value.
+ */
 template <typename T>
-class StatusOr {
-  template <typename U>
-  friend class StatusOr;
-
+class StatusOr final {
  public:
-  // Construct a new StatusOr with Status::UNKNOWN status
-  StatusOr();
+  /**
+   * Initializes with an error status (UNKNOWN).
+   *
+   * TODO(#548) - currently storage::Status does not define the status codes,
+   *     they are simply integers, usually HTTP status codes. We need to map to
+   *     the well-defined set of status codes.
+   */
+  StatusOr() : StatusOr(Status(util::StatusCode::kUnknown, "default")) {}
 
-  // Construct a new StatusOr with the given non-ok status. After calling
-  // this constructor, calls to ValueOrDie() will CHECK-fail.
-  //
-  // NOTE: Not explicit - we want to use StatusOr<T> as a return
-  // value, so it is convenient and sensible to be able to do 'return
-  // Status()' when the return type is StatusOr<T>.
-  //
-  // REQUIRES: status != Status::OK. This requirement is DCHECKed.
-  // In optimized builds, passing Status::OK here will have the effect
-  // of passing PosixErrorSpace::EINVAL as a fallback.
-  StatusOr(const Status& status);  // NOLINT
+  /**
+   * Creates a new `StatusOr<T>` holding the error condition @p rhs.
+   *
+   * @par Post-conditions
+   * `ok() == false` and `status() == rhs`.
+   *
+   * @param rhs the status to initialize the object.
+   * @throws std::invalid_argument if `rhs.ok()`. If exceptions are disabled the
+   *     program terminates via `google::cloud::Terminate()`
+   */
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StatusOr(Status rhs) : status_(std::move(rhs)) {
+    if (status_.ok()) {
+      throw std::invalid_argument(__func__);
+    }
+  }
 
-  // Construct a new StatusOr with the given value. If T is a plain pointer,
-  // value must not be nullptr. After calling this constructor, calls to
-  // ValueOrDie() will succeed, and calls to status() will return OK.
-  //
-  // NOTE: Not explicit - we want to use StatusOr<T> as a return type
-  // so it is convenient and sensible to be able to do 'return T()'
-  // when when the return type is StatusOr<T>.
-  //
-  // REQUIRES: if T is a plain pointer, value != nullptr. This requirement is
-  // DCHECKed. In optimized builds, passing a null pointer here will have
-  // the effect of passing PosixErrorSpace::EINVAL as a fallback.
-  StatusOr(const T& value);  // NOLINT
+  /**
+   * Assigns the given non-OK Status to this `StatusOr<T>`.
+   *
+   * @throws std::invalid_argument if `status.ok()`. If exceptions are disabled
+   *     the program terminates via `google::cloud::Terminate()`
+   */
+  StatusOr& operator=(Status status) {
+    return *this = StatusOr(std::move(status));
+  }
 
-  // Copy constructor.
-  StatusOr(const StatusOr& other);
+  StatusOr(StatusOr&& rhs) : status_(std::move(rhs.status_)) {
+    if (status_.ok()) {
+      new (&value_) T(std::move(*rhs));
+    }
+  }
 
-  // Conversion copy constructor, T must be copy constructible from U
-  template <typename U>
-  StatusOr(const StatusOr<U>& other);
+  StatusOr& operator=(StatusOr&& rhs) {
+    // There may be shorter ways to express this, but this is fairly readable,
+    // and should be reasonably efficient. Note that we must avoid destructing
+    // the destination and/or default initializing it unless really needed.
+    if (!ok()) {
+      if (!rhs.ok()) {
+        status_ = std::move(rhs.status_);
+        return *this;
+      }
+      new (&value_) T(std::move(*rhs));
+      status_ = Status();
+      return *this;
+    }
+    if (!rhs.ok()) {
+      value_.~T();
+      status_ = std::move(rhs.status_);
+      return *this;
+    }
+    **this = *std::move(rhs);
+    status_ = Status();
+    return *this;
+  }
 
-  // Assignment operator.
-  StatusOr& operator=(const StatusOr& other);
+  StatusOr(StatusOr const& rhs) : status_(rhs.status_) {
+    if (status_.ok()) {
+      new (&value_) T(*rhs);
+    }
+  }
 
-  // Conversion assignment operator, T must be assignable from U
-  template <typename U>
-  StatusOr& operator=(const StatusOr<U>& other);
+  StatusOr& operator=(StatusOr const& rhs) {
+    // There may be shorter ways to express this, but this is fairly readable,
+    // and should be reasonably efficient. Note that we must avoid destructing
+    // the destination and/or default initializing it unless really needed.
+    if (!ok()) {
+      if (!rhs.ok()) {
+        status_ = rhs.status_;
+        return *this;
+      }
+      new (&value_) T(*rhs);
+      status_ = rhs.status_;
+      return *this;
+    }
+    if (!rhs.ok()) {
+      value_.~T();
+      status_ = rhs.status_;
+      return *this;
+    }
+    **this = *rhs;
+    status_ = rhs.status_;
+    return *this;
+  }
 
-  // Returns a reference to our status. If this contains a T, then
-  // returns Status::OK.
-  const Status& status() const;
+  ~StatusOr() {
+    if (ok()) {
+      value_.~T();
+    }
+  }
 
-  // Returns this->status().ok()
-  bool ok() const;
+  /**
+   * Assign a `T` (or anything convertible to `T`) into the `StatusOr`.
+   */
+  // Disable this assignment if U==StatusOr<T>. Well, really if U is a
+  // cv-qualified version of StatusOr<T>, so we need to apply std::decay<> to
+  // it first.
+  template <typename U = T>
+  typename std::enable_if<
+      !std::is_same<StatusOr, typename std::decay<U>::type>::value,
+      StatusOr>::type&
+  operator=(U&& rhs) {
+    // There may be shorter ways to express this, but this is fairly readable,
+    // and should be reasonably efficient. Note that we must avoid destructing
+    // the destination and/or default initializing it unless really needed.
+    if (!ok()) {
+      new (&value_) T(std::forward<U>(rhs));
+      status_ = Status();
+      return *this;
+    }
+    **this = std::forward<U>(rhs);
+    status_ = Status();
+    return *this;
+  }
 
-  // Returns a reference to our current value, or CHECK-fails if !this->ok().
-  // If you need to initialize a T object from the stored value,
-  // ConsumeValueOrDie() may be more efficient.
-  const T& ValueOrDie() const;
+  /**
+   * Creates a new `StatusOr<T>` holding the value @p rhs.
+   *
+   * @par Post-conditions
+   * `ok() == true` and `value() == rhs`.
+   *
+   * @param rhs the value used to initialize the object.
+   *
+   * @throws only if `T`'s move constructor throws.
+   */
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StatusOr(T&& rhs) : status_() { new (&value_) T(std::move(rhs)); }
+
+  // NOLINTNEXTLINE(google-explicit-constructor)
+  StatusOr(T const& rhs) : status_() { new (&value_) T(rhs); }
+
+  bool ok() const { return status_.ok(); }
+  explicit operator bool() const { return status_.ok(); }
+
+  //@{
+  /**
+   * @name Deference operators.
+   *
+   * @warning Using these operators when `ok() == false` results in undefined
+   *     behavior.
+   *
+   * @return All these return a (properly ref and const-qualified) reference to
+   *     the underlying value.
+   */
+  T& operator*() & { return value_; }
+
+  T const& operator*() const& { return value_; }
+
+  T&& operator*() && { return std::move(value_); }
+
+  T const&& operator*() const&& { return std::move(value_); }
+  //@}
+
+  //@{
+  /**
+   * @name Member access operators.
+   *
+   * @warning Using these operators when `ok() == false` results in undefined
+   *     behavior.
+   *
+   * @return All these return a (properly ref and const-qualified) pointer to
+   *     the underlying value.
+   */
+  T* operator->() & { return &value_; }
+
+  T const* operator->() const& { return &value_; }
+  //@}
+
+  //@{
+  /**
+   * @name Value accessors.
+   *
+   * @return All these member functions return a (properly ref and
+   *     const-qualified) reference to the underlying value.
+   *
+   * @throws `RuntimeStatusError` with the contents of `status()` if the object
+   *   does not contain a value, i.e., if `ok() == false`.
+   */
+  T& value() & {
+    CheckHasValue();
+    return **this;
+  }
+
+  T const& value() const& {
+    CheckHasValue();
+    return **this;
+  }
+
+  T&& value() && {
+    CheckHasValue();
+    return std::move(**this);
+  }
+
+  T const&& value() const&& {
+    CheckHasValue();
+    return std::move(**this);
+  }
+  //@}
+
+  //@{
+  /**
+   * @name Status accessors.
+   *
+   * @return All these member functions return the (properly ref and
+   *     const-qualified) status. If the object contains a value then
+   *     `status().ok() == true`.
+   */
+  Status& status() & { return status_; }
+  Status const& status() const& { return status_; }
+  Status&& status() && { return std::move(status_); }
+  Status const&& status() const&& { return std::move(status_); }
+  //@}
 
  private:
+  void CheckHasValue() const& {
+    if (!ok()) {
+      throw RuntimeStatusError(status_);
+    }
+  }
+
+  // When possible, do not copy the status.
+  void CheckHasValue() && {
+    if (!ok()) {
+      throw RuntimeStatusError(std::move(status_));
+    }
+  }
+
   Status status_;
-  T value_;
+  union {
+    T value_;
+  };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-// Implementation details for StatusOr<T>
-
-namespace internal {
-
-class StatusOrHelper {
- public:
-  // Move type-agnostic error handling to the .cc.
-  static void Crash(const util::Status& status);
-
-  // Customized behavior for StatusOr<T> vs. StatusOr<T*>
-  template <typename T>
-  struct Specialize;
-};
-
+// Returns true IFF both `StatusOr<T>` objects hold an equal `Status` or an
+// equal instance  of `T`. This function requires that `T` supports equality.
 template <typename T>
-struct StatusOrHelper::Specialize {
-  // For non-pointer T, a reference can never be nullptr.
-  static inline bool IsValueNull(const T& t) { return false; }
-};
+bool operator==(StatusOr<T> const& a, StatusOr<T> const& b) {
+  if (!a || !b) return a.status() == b.status();
+  return *a == *b;
+}
 
+// Returns true of `a` and `b` are not equal. See `operator==` docs above for
+// the definition of equal.
 template <typename T>
-struct StatusOrHelper::Specialize<T*> {
-  static inline bool IsValueNull(const T* t) { return t == nullptr; }
-};
-
-}  // namespace internal
-
-template <typename T>
-inline StatusOr<T>::StatusOr()
-    : status_(util::Status::UNKNOWN) {}
-
-template <typename T>
-inline StatusOr<T>::StatusOr(const Status& status) {
-  if (status.ok()) {
-    status_ = Status(error::INTERNAL, "Status::OK is not a valid argument.");
-  } else {
-    status_ = status;
-  }
+bool operator!=(StatusOr<T> const& a, StatusOr<T> const& b) {
+  return !(a == b);
 }
 
 template <typename T>
-inline StatusOr<T>::StatusOr(const T& value) {
-  if (internal::StatusOrHelper::Specialize<T>::IsValueNull(value)) {
-    status_ = Status(error::INTERNAL, "nullptr is not a vaild argument.");
-  } else {
-    status_ = Status::OK;
-    value_ = value;
-  }
+StatusOr<T> make_status_or(T rhs) {
+  return StatusOr<T>(std::move(rhs));
 }
 
-template <typename T>
-inline StatusOr<T>::StatusOr(const StatusOr<T>& other)
-    : status_(other.status_), value_(other.value_) {}
-
-template <typename T>
-inline StatusOr<T>& StatusOr<T>::operator=(const StatusOr<T>& other) {
-  status_ = other.status_;
-  value_ = other.value_;
-  return *this;
-}
-
-template <typename T>
-template <typename U>
-inline StatusOr<T>::StatusOr(const StatusOr<U>& other)
-    : status_(other.status_), value_(other.status_.ok() ? other.value_ : T()) {}
-
-template <typename T>
-template <typename U>
-inline StatusOr<T>& StatusOr<T>::operator=(const StatusOr<U>& other) {
-  status_ = other.status_;
-  if (status_.ok()) value_ = other.value_;
-  return *this;
-}
-
-template <typename T>
-inline const Status& StatusOr<T>::status() const {
-  return status_;
-}
-
-template <typename T>
-inline bool StatusOr<T>::ok() const {
-  return status().ok();
-}
-
-template <typename T>
-inline const T& StatusOr<T>::ValueOrDie() const {
-  if (!status_.ok()) {
-    internal::StatusOrHelper::Crash(status_);
-  }
-  return value_;
-}
 }  // namespace util
 }  // namespace da
 

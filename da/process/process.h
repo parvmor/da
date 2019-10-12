@@ -1,7 +1,7 @@
 #ifndef __INCLUDED_DA_PROCESS_PROCESS_H_
 #define __INCLUDED_DA_PROCESS_PROCESS_H_
 
-#include <stdint.h>
+#include <ostream>
 #include <string>
 
 namespace da {
@@ -9,21 +9,32 @@ namespace process {
 
 class Process {
  public:
-  Process(uint32_t id, std::string ip_addr, uint16_t port, bool current = false)
-      : id_(id), ip_addr_(std::move(ip_addr)), port_(port), current_(current) {}
+  Process(int id, std::string ip_addr, int port, int messages,
+          bool current = false)
+      : id_(id),
+        ip_addr_(std::move(ip_addr)),
+        port_(port),
+        messages_(messages),
+        current_(current) {}
 
-  uint32_t getId() const { return id_; }
-
-  uint16_t getPort() const { return port_; }
+  int getId() const { return id_; }
 
   const std::string& getIPAddr() const { return ip_addr_; }
+
+  int getPort() const { return port_; }
+
+  int getMessages() const { return messages_; }
 
   bool isCurrent() const { return current_; }
 
  private:
-  const uint32_t id_;
+  friend std::ostream& operator<<(std::ostream&, const Process&);
+
+  const int id_;
   const std::string ip_addr_;
-  const uint16_t port_;
+  const int port_;
+  // Denotes the number of messages this process has to broadcast.
+  const int messages_;
   // Denotes if this process is the one that is actually running.
   const bool current_;
 };

@@ -1,128 +1,78 @@
-// Protocol Buffers - Google's data interchange format
-// Copyright 2008 Google Inc.  All rights reserved.
-// https://developers.google.com/protocol-buffers/
+// Copyright 2018 Google LLC
 //
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-//     * Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//     * Redistributions in binary form must reproduce the above
-// copyright notice, this list of conditions and the following disclaimer
-// in the documentation and/or other materials provided with the
-// distribution.
-//     * Neither the name of Google Inc. nor the names of its
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include <da/util/status.h>
 
-#include <ostream>
-#include <stdio.h>
-#include <string>
-#include <utility>
+#include <sstream>
 
 namespace da {
 namespace util {
-namespace error {
-inline std::string CodeEnumToString(error::Code code) {
+namespace {
+std::string StatusWhat(Status const& status) {
+  std::ostringstream os;
+  os << status;
+  return std::move(os).str();
+}
+}  // namespace
+
+std::string StatusCodeToString(StatusCode code) {
   switch (code) {
-    case OK:
+    case StatusCode::kOk:
       return "OK";
-    case CANCELLED:
+    case StatusCode::kCancelled:
       return "CANCELLED";
-    case UNKNOWN:
+    case StatusCode::kUnknown:
       return "UNKNOWN";
-    case INVALID_ARGUMENT:
+    case StatusCode::kInvalidArgument:
       return "INVALID_ARGUMENT";
-    case DEADLINE_EXCEEDED:
+    case StatusCode::kDeadlineExceeded:
       return "DEADLINE_EXCEEDED";
-    case NOT_FOUND:
+    case StatusCode::kNotFound:
       return "NOT_FOUND";
-    case ALREADY_EXISTS:
+    case StatusCode::kAlreadyExists:
       return "ALREADY_EXISTS";
-    case PERMISSION_DENIED:
+    case StatusCode::kPermissionDenied:
       return "PERMISSION_DENIED";
-    case UNAUTHENTICATED:
+    case StatusCode::kUnauthenticated:
       return "UNAUTHENTICATED";
-    case RESOURCE_EXHAUSTED:
+    case StatusCode::kResourceExhausted:
       return "RESOURCE_EXHAUSTED";
-    case FAILED_PRECONDITION:
+    case StatusCode::kFailedPrecondition:
       return "FAILED_PRECONDITION";
-    case ABORTED:
+    case StatusCode::kAborted:
       return "ABORTED";
-    case OUT_OF_RANGE:
+    case StatusCode::kOutOfRange:
       return "OUT_OF_RANGE";
-    case UNIMPLEMENTED:
+    case StatusCode::kUnimplemented:
       return "UNIMPLEMENTED";
-    case INTERNAL:
+    case StatusCode::kInternal:
       return "INTERNAL";
-    case UNAVAILABLE:
+    case StatusCode::kUnavailable:
       return "UNAVAILABLE";
-    case DATA_LOSS:
+    case StatusCode::kDataLoss:
       return "DATA_LOSS";
-  }
-
-  // No default clause, clang will abort if a code is missing from
-  // above switch.
-  return "UNKNOWN";
-}
-}  // namespace error
-
-const Status Status::OK = Status();
-const Status Status::CANCELLED = Status(error::CANCELLED, "");
-const Status Status::UNKNOWN = Status(error::UNKNOWN, "");
-
-Status::Status() : error_code_(error::OK) {}
-
-Status::Status(error::Code error_code, std::string error_message)
-    : error_code_(error_code) {
-  if (error_code != error::OK) {
-    error_message_ = std::move(error_message);
+    default:
+      return "UNEXPECTED_STATUS_CODE=" + std::to_string(static_cast<int>(code));
   }
 }
 
-Status::Status(const Status& other)
-    : error_code_(other.error_code_), error_message_(other.error_message_) {}
-
-Status& Status::operator=(const Status& other) {
-  error_code_ = other.error_code_;
-  error_message_ = other.error_message_;
-  return *this;
+std::ostream& operator<<(std::ostream& os, StatusCode code) {
+  return os << StatusCodeToString(code);
 }
 
-bool Status::operator==(const Status& x) const {
-  return error_code_ == x.error_code_ && error_message_ == x.error_message_;
-}
-
-std::string Status::ToString() const {
-  if (error_code_ == error::OK) {
-    return "OK";
-  } else {
-    if (error_message_.empty()) {
-      return error::CodeEnumToString(error_code_);
-    } else {
-      return error::CodeEnumToString(error_code_) + ":" + error_message_;
-    }
-  }
-}
-
-std::ostream& operator<<(std::ostream& os, const Status& x) {
-  os << x.ToString();
-  return os;
-}
+RuntimeStatusError::RuntimeStatusError(Status status)
+    : std::runtime_error(StatusWhat(status)), status_(std::move(status)) {}
 
 }  // namespace util
 }  // namespace da

@@ -4,6 +4,7 @@
 #include <time.h>
 
 #include <da/util/logging.h>
+#include <da/init/parser.h>
 #include <da/util/statusor.h>
 
 static int wait_for_start = 1;
@@ -26,8 +27,16 @@ static void stop(int signum) {
 }
 
 int main(int argc, char** argv) {
-  da::util::StatusOr<int> res = 1;
-  LOG(res.ValueOrDie());
+  const auto processes_or = da::init::parse(argc, argv);
+  if (processes_or.ok()) {
+    const auto& processes = *processes_or;
+    for (const auto& process : processes) {
+      LOG(*process);
+    }
+    return 0;
+  }
+  std::cout << processes_or.status();
+  return 0;
   // set signal handlers
   signal(SIGUSR2, start);
   signal(SIGTERM, stop);

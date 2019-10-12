@@ -1,102 +1,100 @@
-// Protocol Buffers - Google's data interchange format
-// Copyright 2008 Google Inc.  All rights reserved.
-// https://developers.google.com/protocol-buffers/
+// Copyright 2018 Google LLC
 //
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-//     * Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//     * Redistributions in binary form must reproduce the above
-// copyright notice, this list of conditions and the following disclaimer
-// in the documentation and/or other materials provided with the
-// distribution.
-//     * Neither the name of Google Inc. nor the names of its
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #ifndef __INCLUDED_DA_UTIL_STATUS_H_
 #define __INCLUDED_DA_UTIL_STATUS_H_
 
-#include <ostream>
-#include <string>
+#include <iostream>
+#include <tuple>
 
 namespace da {
 namespace util {
-namespace error {
-enum Code {
-  OK = 0,
-  CANCELLED = 1,
-  UNKNOWN = 2,
-  INVALID_ARGUMENT = 3,
-  DEADLINE_EXCEEDED = 4,
-  NOT_FOUND = 5,
-  ALREADY_EXISTS = 6,
-  PERMISSION_DENIED = 7,
-  UNAUTHENTICATED = 16,
-  RESOURCE_EXHAUSTED = 8,
-  FAILED_PRECONDITION = 9,
-  ABORTED = 10,
-  OUT_OF_RANGE = 11,
-  UNIMPLEMENTED = 12,
-  INTERNAL = 13,
-  UNAVAILABLE = 14,
-  DATA_LOSS = 15,
+/**
+ * Well-known status codes with `grpc::StatusCode`-compatible values.
+ *
+ * The semantics of these values are documented in:
+ *     https://grpc.io/grpc/cpp/classgrpc_1_1_status.html
+ *
+ */
+enum class StatusCode {
+  /// Not an error; returned on success.
+  kOk = 0,
+  kCancelled = 1,
+  kUnknown = 2,
+  kInvalidArgument = 3,
+  kDeadlineExceeded = 4,
+  kNotFound = 5,
+  kAlreadyExists = 6,
+  kPermissionDenied = 7,
+  kUnauthenticated = 16,
+  kResourceExhausted = 8,
+  kFailedPrecondition = 9,
+  kAborted = 10,
+  kOutOfRange = 11,
+  kUnimplemented = 12,
+  kInternal = 13,
+  kUnavailable = 14,
+  kDataLoss = 15,
 };
-}  // namespace error
 
+std::string StatusCodeToString(StatusCode code);
+std::ostream& operator<<(std::ostream& os, StatusCode code);
+
+/**
+ * Reports error code and details from a remote request.
+ *
+ * This class is modeled after `grpc::Status`, it contains the status code and
+ * error message (if applicable) from a JSON request.
+ */
 class Status {
  public:
-  // Creates a "successful" status.
-  Status();
+  Status() : code_(StatusCode::kOk) {}
 
-  // Create a status in the canonical error space with the specified
-  // code, and error message.  If "code == 0", error_message is
-  // ignored and a Status object identical to Status::OK is
-  // constructed.
-  Status(error::Code error_code, std::string error_message);
-  Status(const Status&);
-  Status& operator=(const Status& x);
-  ~Status() {}
+  explicit Status(StatusCode status_code, std::string message)
+      : code_(status_code), message_(std::move(message)) {}
 
-  // Some pre-defined Status objects
-  static const Status OK;  // Identical to 0-arg constructor
-  static const Status CANCELLED;
-  static const Status UNKNOWN;
+  bool ok() const { return code_ == StatusCode::kOk; }
 
-  // Accessor
-  bool ok() const { return error_code_ == error::OK; }
-  int error_code() const { return error_code_; }
-  error::Code code() const { return error_code_; }
-  const std::string& error_message() const { return error_message_; }
-  const std::string& message() const { return error_message_; }
-
-  bool operator==(const Status& x) const;
-  bool operator!=(const Status& x) const { return !operator==(x); }
-
-  // Return a combination of the error code name and message.
-  std::string ToString() const;
+  StatusCode code() const { return code_; }
+  std::string const& message() const { return message_; }
 
  private:
-  error::Code error_code_;
-  std::string error_message_;
+  StatusCode code_;
+  std::string message_;
 };
 
-std::ostream& operator<<(std::ostream& os, const Status& x);
+inline std::ostream& operator<<(std::ostream& os, Status const& rhs) {
+  return os << rhs.message() << " [" << StatusCodeToString(rhs.code()) << "]";
+}
 
-#define EXPECT_OK(value) EXPECT_TRUE((value).ok())
+inline bool operator==(Status const& lhs, Status const& rhs) {
+  return lhs.code() == rhs.code() && lhs.message() == rhs.message();
+}
+
+inline bool operator!=(Status const& lhs, Status const& rhs) {
+  return !(lhs == rhs);
+}
+
+class RuntimeStatusError : public std::runtime_error {
+ public:
+  explicit RuntimeStatusError(Status status);
+
+  Status const& status() const { return status_; }
+
+ private:
+  Status status_;
+};
 
 }  // namespace util
 }  // namespace da

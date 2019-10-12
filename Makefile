@@ -4,11 +4,14 @@ init:
 	rm -rf build
 	mkdir build
 
-da_proc: status statusor da/da_proc.cc
+da_proc: process parser da/da_proc.cc
 	g++ -Wall -I. -DENABLE_LOG -O3 -o da_proc da/da_proc.cc build/*.o
 
-statusor: status da/util/statusor.cc
-	g++ -Wall -I. -DENABLE_LOG -O3 -c da/util/statusor.cc -o build/statusor.o
+parser: process status da/init/parser.cc
+	g++ -Wall -I. -DENABLE_LOG -O3 -c da/init/parser.cc -o build/parser.o
+
+process: da/process/process.cc
+	g++ -Wall -I. -DENABLE_LOG -O3 -c da/process/process.cc -o build/process.o
 
 status: da/util/status.cc
 	g++ -Wall -I. -DENABLE_LOG -O3 -c da/util/status.cc -o build/status.o
