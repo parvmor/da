@@ -1,8 +1,8 @@
 #ifndef __INCLUDED_DA_PROCESS_PROCESS_H_
 #define __INCLUDED_DA_PROCESS_PROCESS_H_
 
-#include "stdint.h"
-#include "string"
+#include <stdint.h>
+#include <string>
 
 namespace da {
 namespace process {
@@ -12,13 +12,13 @@ class Process {
   Process(uint32_t id, std::string ip_addr, uint16_t port, bool current = false)
       : id_(id), ip_addr_(std::move(ip_addr)), port_(port), current_(current) {}
 
-  uint32_t getId() { return id_; }
+  uint32_t getId() const { return id_; }
 
-  uint16_t getPort() { return port_; }
+  uint16_t getPort() const { return port_; }
 
-  const std::string& getIPAddr() { return ip_addr_; }
+  const std::string& getIPAddr() const { return ip_addr_; }
 
-  bool isCurrent() { return current_; }
+  bool isCurrent() const { return current_; }
 
  private:
   const uint32_t id_;

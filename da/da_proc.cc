@@ -3,6 +3,9 @@
 #include <signal.h>
 #include <time.h>
 
+#include <da/util/logging.h>
+#include <da/util/statusor.h>
+
 static int wait_for_start = 1;
 
 static void start(int signum) { wait_for_start = 0; }
@@ -23,7 +26,8 @@ static void stop(int signum) {
 }
 
 int main(int argc, char** argv) {
-
+  da::util::StatusOr<int> res = 1;
+  LOG(res.ValueOrDie());
   // set signal handlers
   signal(SIGUSR2, start);
   signal(SIGTERM, stop);
