@@ -1,5 +1,5 @@
 COMPILER = g++
-CFLAGS = -Wall -I. -DENABLE_LOG -O3
+CFLAGS = -Wall -I. -DENABLE_LOG -O3 -std=c++14
 CC = $(COMPILER) $(CFLAGS)
 BIN = da_proc
 BUILD = build
@@ -26,7 +26,7 @@ init: format clean
 bin: da_proc
 	$(CC) -o $(BIN) $(OBJS)
 
-da_proc: % : $(SRC)/%.cc util/status process/process init/parser
+da_proc: % : $(SRC)/%.cc util/status process/process init/parser udp/udp
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
@@ -42,6 +42,11 @@ process/process: % : $(SRC)/%.cc util/status
 	$(eval OBJS += $(BUILD)/$@.o)
 
 util/status: % : $(SRC)/%.cc
+	mkdir -p $(shell dirname $(BUILD)/$@.o)
+	$(CC) -c -o $(BUILD)/$@.o $<
+	$(eval OBJS += $(BUILD)/$@.o)
+
+udp/udp: % : $(SRC)/%.cc 
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)

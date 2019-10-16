@@ -1,10 +1,11 @@
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <signal.h>
 #include <time.h>
 
-#include <da/util/logging.h>
 #include <da/init/parser.h>
+#include <da/udp/udp.h>
+#include <da/util/logging.h>
 #include <da/util/statusor.h>
 
 static int wait_for_start = 1;
@@ -27,11 +28,36 @@ static void stop(int signum) {
 }
 
 int main(int argc, char** argv) {
+  da::udp::Udp* udp;
   const auto processes_or = da::init::parse(argc, argv);
   if (processes_or.ok()) {
     const auto& processes = *processes_or;
     for (const auto& process : processes) {
       LOG(*process);
+      //Test udp functionality
+      if ((*process).isCurrent()) {
+        udp = new da::udp::Udp((*process).getIPAddr().c_str(),
+                               (*process).getPort());
+        if ((*process).getId() == 1) {
+          struct sockaddr_in servaddr;
+          memset(&servaddr, 0, sizeof(sockaddr_in));
+          socklen_t len;
+          memset(&len, 0, sizeof(socklen_t));
+          char buffer[BUFFERSIZE];
+
+          (*udp).recv(0, 0, buffer, &servaddr, &len);
+          printf("Server : %s\n", buffer);
+          (*udp).recv(0, 0, buffer, &servaddr, &len);
+          printf("Server : %s\n", buffer);
+          (*udp).recv(0, 0, buffer, &servaddr, &len);
+          printf("Server : %s\n", buffer);
+          (*udp).recv(0, 0, buffer, &servaddr, &len);
+          printf("Server : %s\n", buffer);
+        } else {
+          (*udp).send((*processes[0]).getIPAddr().c_str(),
+                      (*processes[0]).getPort(), "Hello from another service");
+        }
+      }
     }
     return 0;
   }
