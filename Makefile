@@ -11,8 +11,8 @@ OBJS =
 all: init bin
 
 format:
-	find . -type f -name "*.cc" | xargs -I{} bash -c 'clang-format -i {}'
-	find . -type f -name "*.h" | xargs -I{} bash -c 'clang-format -i {}'
+	find . -type f -name "*.cc" | xargs -I{} bash -c 'clang-format -i {}' 2>/dev/null || echo >&2 "clang-format not found. Skipping."
+	find . -type f -name "*.h" | xargs -I{} bash -c 'clang-format -i {}' 2>/dev/null || echo >&2 "clang-format not found. Skipping."
 
 clean:
 	rm -rf build

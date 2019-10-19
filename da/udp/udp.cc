@@ -31,7 +31,6 @@ da::udp::Udp::Udp(const char *ip, int port, int domain, int type,
   }
 }
 
-
 int da::udp::Udp::recv(long timeout_s, long timeout_ns, char *buffer,
                        struct sockaddr_in *servaddr, socklen_t *len) {
   // Define timeval for the timeout
@@ -62,17 +61,16 @@ int da::udp::Udp::recv(long timeout_s, long timeout_ns, char *buffer,
   return n;
 }
 
-
 int da::udp::Udp::send(const char *ip, int port, const char *msg) {
 
-  //setup descriptor for target address
+  // setup descriptor for target address
   struct sockaddr_in serv_addr;
   memset(&serv_addr, 0, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_port = htons(port);
   inet_aton(ip, &serv_addr.sin_addr);
 
-  //send message
+  // send message
   int n = sendto(sock, msg, strlen(msg), MSG_CONFIRM,
                  (const struct sockaddr *)&serv_addr, sizeof(serv_addr));
   if (n < 0) {

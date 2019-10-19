@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
     const auto& processes = *processes_or;
     for (const auto& process : processes) {
       LOG(*process);
-      //Test udp functionality
+      // Test udp functionality
       if ((*process).isCurrent()) {
         udp = new da::udp::Udp((*process).getIPAddr().c_str(),
                                (*process).getPort());

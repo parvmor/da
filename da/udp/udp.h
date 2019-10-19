@@ -19,12 +19,12 @@ class Udp {
   int sock;
 
  public:
- //Initialize a udp socket.  
+  // Initialize a udp socket.
   Udp(const char* ip, int port, int domain = AF_INET, int type = SOCK_DGRAM,
       int protocol = 0);
   ~Udp();
 
-// Receives a message. The buffer should have length BUFFERSIZE.
+  // Receives a message. The buffer should have length BUFFERSIZE.
   int recv(long timeout_s, long timeout_ns, char* buffer,
            struct sockaddr_in* servaddr, socklen_t* len);
   // Sends the given message.
