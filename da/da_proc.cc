@@ -1,10 +1,11 @@
+#include <cassert>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
 #include <da/init/parser.h>
-#include <da/udp/udp.h>
+#include <da/socket/udp_socket.h>
 #include <da/util/logging.h>
 #include <da/util/statusor.h>
 
@@ -28,40 +29,44 @@ static void stop(int signum) {
 }
 
 int main(int argc, char** argv) {
-  da::udp::Udp* udp;
   const auto processes_or = da::init::parse(argc, argv);
-  if (processes_or.ok()) {
-    const auto& processes = *processes_or;
-    for (const auto& process : processes) {
-      LOG(*process);
-      // Test udp functionality
-      if ((*process).isCurrent()) {
-        udp = new da::udp::Udp((*process).getIPAddr().c_str(),
-                               (*process).getPort());
-        if ((*process).getId() == 1) {
-          struct sockaddr_in servaddr;
-          memset(&servaddr, 0, sizeof(sockaddr_in));
-          socklen_t len;
-          memset(&len, 0, sizeof(socklen_t));
-          char buffer[BUFFERSIZE];
-
-          (*udp).recv(0, 0, buffer, &servaddr, &len);
-          printf("Server : %s\n", buffer);
-          (*udp).recv(0, 0, buffer, &servaddr, &len);
-          printf("Server : %s\n", buffer);
-          (*udp).recv(0, 0, buffer, &servaddr, &len);
-          printf("Server : %s\n", buffer);
-          (*udp).recv(0, 0, buffer, &servaddr, &len);
-          printf("Server : %s\n", buffer);
-        } else {
-          (*udp).send((*processes[0]).getIPAddr().c_str(),
-                      (*processes[0]).getPort(), "Hello from another service");
-        }
-      }
-    }
+  if (!processes_or.ok()) {
+    std::cerr << processes_or.status();
     return 0;
   }
-  std::cout << processes_or.status();
+  const auto& processes = *processes_or;
+  for (const auto& process : processes) {
+    if (!process->isCurrent()) {
+      continue;
+    }
+    da::socket::UDPSocket sock(process->getIPAddr(), process->getPort());
+    if (process->getId() != 1) {
+      sock.sendTo("Hello from another service", 27, processes[0]->getIPAddr(),
+                  processes[0]->getPort());
+      continue;
+    }
+    char buffer[30];
+    sock.recv(buffer, 27);
+    if (buffer[26] != '\0') {
+      printf("Fuck the chinese government!\n");
+    }
+    printf("%s\n", buffer);
+    sock.recv(buffer, 27);
+    if (buffer[26] != '\0') {
+      printf("Fuck the chinese government!\n");
+    }
+    printf("%s\n", buffer);
+    sock.recv(buffer, 27);
+    if (buffer[26] != '\0') {
+      printf("Fuck the chinese government!\n");
+    }
+    printf("%s\n", buffer);
+    sock.recv(buffer, 27);
+    if (buffer[26] != '\0') {
+      printf("Fuck the chinese government!\n");
+    }
+    printf("%s\n", buffer);
+  }
   return 0;
   // set signal handlers
   signal(SIGUSR2, start);

@@ -26,7 +26,7 @@ init: format clean
 bin: da_proc
 	$(CC) -o $(BIN) $(OBJS)
 
-da_proc: % : $(SRC)/%.cc util/status process/process init/parser udp/udp
+da_proc: % : $(SRC)/%.cc util/status process/process init/parser socket/udp_socket
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
@@ -41,12 +41,23 @@ process/process: % : $(SRC)/%.cc util/status
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
 
+socket/udp_socket: % : $(SRC)/%.cc util/status socket/socket socket/communicating_socket
+	mkdir -p $(shell dirname $(BUILD)/$@.o)
+	$(CC) -c -o $(BUILD)/$@.o $<
+	$(eval OBJS += $(BUILD)/$@.o)
+
+socket/communicating_socket: % : $(SRC)/%.cc util/status socket/socket
+	mkdir -p $(shell dirname $(BUILD)/$@.o)
+	$(CC) -c -o $(BUILD)/$@.o $<
+	$(eval OBJS += $(BUILD)/$@.o)
+
+socket/socket: % : $(SRC)/%.cc  util/status
+	mkdir -p $(shell dirname $(BUILD)/$@.o)
+	$(CC) -c -o $(BUILD)/$@.o $<
+	$(eval OBJS += $(BUILD)/$@.o)
+
 util/status: % : $(SRC)/%.cc
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
 
-udp/udp: % : $(SRC)/%.cc 
-	mkdir -p $(shell dirname $(BUILD)/$@.o)
-	$(CC) -c -o $(BUILD)/$@.o $<
-	$(eval OBJS += $(BUILD)/$@.o)
