@@ -1,5 +1,5 @@
 COMPILER = g++
-CFLAGS = -Wall -I. -DENABLE_LOG -O3 -std=c++14
+CFLAGS = -Wall -I. -DENABLE_LOG -O3 -std=c++14 -pthread
 CC = $(COMPILER) $(CFLAGS)
 BIN = da_proc
 BUILD = build

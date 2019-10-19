@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include <da/executor/executor.h>
 #include <da/init/parser.h>
 #include <da/socket/udp_socket.h>
 #include <da/util/logging.h>
@@ -28,7 +29,27 @@ static void stop(int signum) {
   exit(0);
 }
 
+void func() {
+  volatile double factor = 1.0;
+  volatile double sum = 0.0;
+  for (int i = 0; i < 1000000000; i++, factor = -factor) {
+    sum += factor / (2 * i + 1.0);
+  }
+  std::cerr << 4.0 * sum << std::endl;
+}
+
 int main(int argc, char** argv) {
+  da::executor::Executor executor;
+  executor.add(func);
+  executor.add(func);
+  executor.add(func);
+  executor.add(func);
+  auto f0 = executor.add([]() { return 4; });
+  auto f1 = executor.add([]() { return 5; });
+  std::cout << f1.get() << std::endl;
+  executor.waitForCompletion();
+  std::cout << f0.get() << std::endl;
+  return 0;
   const auto processes_or = da::init::parse(argc, argv);
   if (!processes_or.ok()) {
     std::cerr << processes_or.status();
