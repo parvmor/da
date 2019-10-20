@@ -2,6 +2,7 @@
 #define __INCLUDED_DA_EXECUTOR_EXECUTOR_H_
 
 #include <atomic>
+#include <chrono>
 #include <functional>
 #include <future>
 #include <mutex>
@@ -31,19 +32,28 @@ class Executor {
   // Delete the move assignment operator.
   Executor& operator=(Executor&&) = delete;
 
-  bool isAlive() { return alive_; }
+  bool isAlive() const { return alive_; }
 
   void waitForCompletion();
 
+  // Adds the function to be executed as soon as possible.
   template <typename Function, typename... Args>
   auto add(Function&& f, Args&&... args) -> std::future<decltype(f(args...))>;
 
+  // Adds the function with a delay of interval seconds in execution.
+  // If there is no other function waiting to be executed sooner then the given
+  // function will be executed.
+  template <typename Function, typename... Args>
+  auto schedule(std::chrono::seconds interval, Function&& f, Args&&... args)
+      -> std::future<decltype(f(args...))>;
+
  private:
+  class Task;
   class Worker;
 
   std::atomic<bool> alive_;
   std::vector<std::thread> workers_;
-  ThreadSafeQueue<std::function<void()>> queue_;
+  ThreadSafeQueue<Task> queue_;
   std::mutex mutex_;
   std::condition_variable cond_var_;
 };
@@ -57,6 +67,26 @@ class Executor::Worker {
  private:
   const int id_;
   Executor* executor_;
+};
+
+class Executor::Task {
+ public:
+  Task();
+
+  Task(const std::function<void()>& f,
+       std::chrono::time_point<std::chrono::high_resolution_clock> time);
+
+  bool operator<(const Task& task) const;
+
+  bool operator>(const Task& task) const;
+
+  void operator()();
+
+  std::chrono::time_point<std::chrono::high_resolution_clock> getTime() const;
+
+ private:
+  std::function<void()> f_;
+  std::chrono::time_point<std::chrono::high_resolution_clock> time_;
 };
 
 Executor::Executor() : Executor(std::thread::hardware_concurrency()) {}
@@ -90,6 +120,13 @@ void Executor::waitForCompletion() {
 template <typename Function, typename... Args>
 auto Executor::add(Function&& f, Args&&... args)
     -> std::future<decltype(f(args...))> {
+  return schedule(std::chrono::seconds::zero(), f, args...);
+}
+
+template <typename Function, typename... Args>
+auto Executor::schedule(std::chrono::seconds interval, Function&& f,
+                        Args&&... args) -> std::future<decltype(f(args...))> {
+  const auto time = std::chrono::high_resolution_clock::now() + interval;
   // Bind the arguments to the function.
   std::function<decltype(f(args...))()> func =
       std::bind(std::forward<Function>(f), std::forward<Args>(args)...);
@@ -98,7 +135,7 @@ auto Executor::add(Function&& f, Args&&... args)
       std::make_shared<std::packaged_task<decltype(f(args...))()>>(func);
   // Correct the type and enqueue it to be executed.
   std::function<void()> ret_void_func = [task]() { (*task)(); };
-  queue_.enqueue(ret_void_func);
+  queue_.enqueue(Task(ret_void_func, time));
   // Wake up a thread to execute the function (if it was waiting).
   {
     std::unique_lock<std::mutex> lock(mutex_);
@@ -112,8 +149,8 @@ Executor::Worker::Worker(int id, Executor* executor)
     : id_(id), executor_(executor) {}
 
 void Executor::Worker::operator()() {
-  while (executor_->alive_) {
-    std::function<void()> f;
+  while (executor_->alive_ || !executor_->queue_.empty()) {
+    Task task;
     {
       std::unique_lock<std::mutex> lock(executor_->mutex_);
       if (executor_->queue_.empty()) {
@@ -121,12 +158,41 @@ void Executor::Worker::operator()() {
           return !executor_->alive_ || !executor_->queue_.empty();
         });
       }
-      if (!executor_->queue_.dequeue(f)) {
+      if (!executor_->queue_.dequeue(task)) {
         continue;
       }
     }
-    f();
+    task();
   }
+}
+
+Executor::Task::Task()
+    : f_(nullptr),
+      time_(std::chrono::time_point<std::chrono::high_resolution_clock>()) {}
+
+Executor::Task::Task(
+    const std::function<void()>& f,
+    std::chrono::time_point<std::chrono::high_resolution_clock> time)
+    : f_(f), time_(time) {}
+
+bool Executor::Task::operator<(const Executor::Task& task) const {
+  return this->time_ < task.getTime();
+}
+
+bool Executor::Task::operator>(const Executor::Task& task) const {
+  return this->time_ > task.getTime();
+}
+
+std::chrono::time_point<std::chrono::high_resolution_clock>
+Executor::Task::getTime() const {
+  return time_;
+}
+
+void Executor::Task::operator()() {
+  if (f_ == nullptr) {
+    return;
+  }
+  f_();
 }
 
 }  // namespace executor

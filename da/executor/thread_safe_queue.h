@@ -3,6 +3,7 @@
 
 #include <mutex>
 #include <queue>
+#include <vector>
 
 namespace da {
 namespace executor {
@@ -33,14 +34,14 @@ class ThreadSafeQueue {
     if (queue_.empty()) {
       return false;
     }
-    t = std::move(queue_.front());
+    t = std::move(queue_.top());
     queue_.pop();
     return true;
   }
 
  private:
   std::mutex mutex_;
-  std::queue<T> queue_;
+  std::priority_queue<T, std::vector<T>, std::greater<T>> queue_;
 };
 
 }  // namespace executor
