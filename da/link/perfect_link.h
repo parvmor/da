@@ -14,6 +14,8 @@
 namespace da {
 namespace link {
 
+extern const int msg_length;
+
 class PerfectLink {
  public:
   PerfectLink(executor::Executor* executor, socket::UDPSocket* sock,
@@ -27,8 +29,13 @@ class PerfectLink {
 
   ~PerfectLink();
 
-  // Messages are always an integer as required by the description.
+  // Sends a message containing the given message id to the foreign process.
   void sendMessage(int message);
+
+  // Receives the given message from the foreign process.
+  //
+  // TODO(parvmor): Send an acknowledgment of receiving back.
+  void recvMessage(int message);
 
  private:
   void sendMessageCallback(int message);

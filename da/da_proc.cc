@@ -1,12 +1,15 @@
 #include <cassert>
+#include <memory>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <thread>
 #include <time.h>
 
 #include <da/executor/executor.h>
 #include <da/init/parser.h>
 #include <da/link/perfect_link.h>
+#include <da/receiver/receiver.h>
 #include <da/socket/udp_socket.h>
 #include <da/util/logging.h>
 #include <da/util/statusor.h>
@@ -31,12 +34,14 @@ static void stop(int signum) {
 }
 
 int main(int argc, char** argv) {
+  // Parse the membership file.
   const auto processes_or = da::init::parse(argc, argv);
   if (!processes_or.ok()) {
-    LOG(processes_or.status());
+    LOG("Unable to parse the command line arguments. Status: ",
+        processes_or.status());
     return 1;
   }
-  da::executor::Executor executor;
+  // Find the current process class.
   da::process::Process* current_process = nullptr;
   const auto& processes = *processes_or;
   for (const auto& process : processes) {
@@ -50,12 +55,23 @@ int main(int argc, char** argv) {
                          "Could not find current process."));
     return 1;
   }
-  da::socket::UDPSocket sock(current_process->getIPAddr(),
-                             current_process->getPort());
-  da::link::PerfectLink perfect_link(&executor, &sock, current_process,
-                                     processes[1].get());
-  perfect_link.sendMessage(2);
+  // Create executor and a UDP socket for current process.
+  auto executor = std::make_unique<da::executor::Executor>();
+  auto sock = std::make_unique<da::socket::UDPSocket>(
+      current_process->getIPAddr(), current_process->getPort());
+  // Launch a thread that will be receiving packets.
+  auto receiver =
+      std::make_unique<da::receiver::Receiver>(executor.get(), sock.get());
+  auto receiver_thread = std::thread([&receiver]() { (*receiver)(); });
+  da::link::PerfectLink perfect_link(executor.get(), sock.get(),
+                                     current_process, processes[0].get());
+  perfect_link.sendMessage(123212);
   sleep(1);
+  // Stop and wait for receiver thread to exit gracefully.
+  receiver->stop();
+  if (receiver_thread.joinable()) {
+    receiver_thread.join();
+  }
   return 0;
   // set signal handlers
   signal(SIGUSR2, start);
