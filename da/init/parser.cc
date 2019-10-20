@@ -1,5 +1,6 @@
 #include <da/init/parser.h>
 
+#include <climits>
 #include <fstream>
 #include <memory>
 #include <string>
@@ -52,12 +53,16 @@ parseMembershipFile(const char* file, int current_process_id, int messages) {
 
 util::StatusOr<std::vector<std::unique_ptr<process::Process>>> parse(
     int argc, char** argv) {
-  if (argc <= 3 || argc > 4) {
+  if (argc <= 2 || argc > 4) {
     return util::Status(util::StatusCode::kInvalidArgument,
                         "Exactly 3 command line arguments expected.");
   }
+  int messages = INT_MAX;
+  if (argc == 4) {
+    messages = atoi(argv[3]);
+  }
   // TODO: Validate the input before doing the conversion.
-  return parseMembershipFile(argv[2], atoi(argv[1]), atoi(argv[3]));
+  return parseMembershipFile(argv[2], atoi(argv[1]), messages);
 }
 
 }  // namespace init

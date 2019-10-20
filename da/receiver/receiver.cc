@@ -11,7 +11,10 @@ namespace {
 std::pair<int, int> getProcessIdAndMessage(const char* buffer) {
   int process_id = 0;
   for (int i = 1; i <= int(sizeof(int)); i++) {
-    process_id |= static_cast<int>(buffer[i - 1]) << (8 * (sizeof(int) - i));
+    // Clear off any sign extension that might have happened.
+    int byte = static_cast<int>(buffer[i - 1]) & 0xFF;
+    byte <<= (8 * (sizeof(int) - i));
+    process_id |= byte;
   }
   int message = 0;
   for (int i = 1; i <= int(sizeof(int)); i++) {
