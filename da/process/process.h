@@ -9,12 +9,12 @@ namespace process {
 
 class Process {
  public:
-  Process(int id, std::string ip_addr, int port, int messages,
+  Process(int id, std::string ip_addr, int port, int message_count,
           bool current = false)
       : id_(id),
         ip_addr_(std::move(ip_addr)),
         port_(port),
-        messages_(messages),
+        message_count_(message_count),
         current_(current) {}
 
   int getId() const { return id_; }
@@ -23,7 +23,7 @@ class Process {
 
   int getPort() const { return port_; }
 
-  int getMessages() const { return messages_; }
+  int getMessageCount() const { return message_count_; }
 
   bool isCurrent() const { return current_; }
 
@@ -34,7 +34,7 @@ class Process {
   const std::string ip_addr_;
   const int port_;
   // Denotes the number of messages this process has to broadcast.
-  const int messages_;
+  const int message_count_;
   // Denotes if this process is the one that is actually running.
   const bool current_;
 };

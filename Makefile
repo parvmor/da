@@ -1,5 +1,5 @@
 COMPILER = g++
-CFLAGS = -Wall -I. -DENABLE_LOG -O3 -std=c++14 -pthread
+CFLAGS = -Wall -I. -DENABLE_LOG -O3 -std=c++14 -pthread -g
 CC = $(COMPILER) $(CFLAGS)
 BIN = da_proc
 BUILD = build
@@ -26,12 +26,22 @@ init: format clean
 bin: da_proc
 	$(CC) -o $(BIN) $(OBJS)
 
-da_proc: % : $(SRC)/%.cc util/status process/process init/parser socket/udp_socket
+da_proc: % : $(SRC)/%.cc util/status process/process init/parser socket/udp_socket executor/executor link/perfect_link
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
 
 init/parser: % : $(SRC)/%.cc util/status process/process
+	mkdir -p $(shell dirname $(BUILD)/$@.o)
+	$(CC) -c -o $(BUILD)/$@.o $<
+	$(eval OBJS += $(BUILD)/$@.o)
+
+link/perfect_link: % : $(SRC)/%.cc util/status process/process socket/udp_socket executor/executor
+	mkdir -p $(shell dirname $(BUILD)/$@.o)
+	$(CC) -c -o $(BUILD)/$@.o $<
+	$(eval OBJS += $(BUILD)/$@.o)
+
+executor/executor: % : $(SRC)/%.cc
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)

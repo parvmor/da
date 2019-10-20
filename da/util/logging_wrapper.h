@@ -10,7 +10,7 @@ namespace {
 
 static void LogRecursive(const char* file, const char* function, int line,
                          std::ostringstream& msg) {
-  std::cout << file << " in function " << function << " at line " << line
+  std::cerr << file << " in function " << function << " at line " << line
             << ": " << msg.str() << std::endl;
 }
 
