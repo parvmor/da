@@ -7,13 +7,8 @@ util::Status fillAddr(const std::string &address, unsigned short port,
                       sockaddr_in &addr) {
   memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
-  hostent *host;
-  if ((host = gethostbyname(address.c_str())) == NULL) {
-    return util::Status(util::StatusCode::kUnknown,
-                        "Falied to resolve name (gethostbyname())");
-  }
-  addr.sin_addr.s_addr = *((unsigned long *)host->h_addr_list[0]);
   addr.sin_port = htons(port);
+  inet_pton(AF_INET, address.c_str(), &addr.sin_addr);
   return util::Status();
 }
 

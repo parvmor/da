@@ -25,7 +25,7 @@ std::pair<int, int> getProcessIdAndMessage(const char* buffer) {
 
 }  // namespace
 
-void Receiver::operator()() {
+void Receiver::operator()(broadcast::UniformReliable* urb) {
   while (alive_) {
     char buffer[link::msg_length];
     const auto int_or = sock_->recv(buffer, link::msg_length);
@@ -38,9 +38,12 @@ void Receiver::operator()() {
           " from the socket. Received length: ", int_or.value());
       continue;
     }
-    const auto process_id_and_message = getProcessIdAndMessage(buffer);
-    LOG("Received message: ", process_id_and_message.second, " from process ",
-        process_id_and_message.first);
+    int process_id, message;
+    std::tie(process_id, message) = getProcessIdAndMessage(buffer);
+    LOG("Received message: ", message, " from process with id ", process_id);
+    executor_->add([&urb, process_id, message]() {
+      urb->deliver(process_id, message);
+    });
   }
 }
 

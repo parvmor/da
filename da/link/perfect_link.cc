@@ -86,16 +86,21 @@ void PerfectLink::sendMessageCallback(int message) {
       interval_, std::bind(&PerfectLink::sendMessageCallback, this, message));
 }
 
-void PerfectLink::recvMessage(int message) {
+bool PerfectLink::recvMessage(int message) {
+  if (message < 1 || message > local_process_->getMessageCount()) {
+    LOG("Received an unknown message: ", message, " from the process ",
+        foreign_process_, " by process ", local_process_);
+    return false;
+  }
   std::unique_lock<std::shared_timed_mutex> lock(mutex_);
   if (delivered_messages_.find(message) != delivered_messages_.end()) {
     // We have already received this message.
-    return;
+    return false;
   }
   delivered_messages_.insert(message);
-  // TODO(parvmor): Call the callback that is registered with this perfect link.
   LOG("Received message '", message, "' from process ", foreign_process_,
       " by process ", local_process_);
+  return true;
 }
 
 }  // namespace link

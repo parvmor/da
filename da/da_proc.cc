@@ -1,3 +1,4 @@
+#include <atomic>
 #include <cassert>
 #include <memory>
 #include <signal.h>
@@ -6,6 +7,7 @@
 #include <thread>
 #include <time.h>
 
+#include <da/broadcast/uniform_reliable.h>
 #include <da/executor/executor.h>
 #include <da/init/parser.h>
 #include <da/link/perfect_link.h>
@@ -14,11 +16,21 @@
 #include <da/util/logging.h>
 #include <da/util/statusor.h>
 
-static int wait_for_start = 1;
+namespace {
 
-static void start(int signum) { wait_for_start = 0; }
+std::atomic<bool> can_start{false};
 
-static void stop(int signum) {
+void registerSignalHandlers() {
+  // Register a function to toggle the can_start when SIGUSR2 is received.
+  // NOTE: Lambda and function pointers have different types and hence, a
+  // positive lambda has been used.
+  signal(SIGUSR2, +[](int signal) { can_start = true; });
+  // TODO(parvmor): Fix the following signal handlers.
+  signal(SIGTERM, +[](int signal) { can_start = false; });
+  signal(SIGINT, +[](int signal) { can_start = false; });
+}
+
+void stop(int signum) {
   // reset signal handlers to default
   signal(SIGTERM, SIG_DFL);
   signal(SIGINT, SIG_DFL);
@@ -33,9 +45,14 @@ static void stop(int signum) {
   exit(0);
 }
 
+}  // namespace
+
 int main(int argc, char** argv) {
+  LOG("Initializing...");
+  // Register different signal handlers.
+  registerSignalHandlers();
   // Parse the membership file.
-  const auto processes_or = da::init::parse(argc, argv);
+  auto processes_or = da::init::parse(argc, argv);
   if (!processes_or.ok()) {
     LOG("Unable to parse the command line arguments. Status: ",
         processes_or.status());
@@ -43,7 +60,7 @@ int main(int argc, char** argv) {
   }
   // Find the current process class.
   da::process::Process* current_process = nullptr;
-  const auto& processes = *processes_or;
+  auto& processes = *processes_or;
   for (const auto& process : processes) {
     if (!process->isCurrent()) {
       continue;
@@ -59,46 +76,42 @@ int main(int argc, char** argv) {
   auto executor = std::make_unique<da::executor::Executor>();
   auto sock = std::make_unique<da::socket::UDPSocket>(
       current_process->getIPAddr(), current_process->getPort());
+  // Create a list of perfect links to all the processes.
+  std::vector<std::unique_ptr<da::link::PerfectLink>> perfect_links;
+  perfect_links.reserve(processes.size());
+  for (const auto& process : processes) {
+    perfect_links.emplace_back(std::make_unique<da::link::PerfectLink>(
+        executor.get(), sock.get(), current_process, process.get()));
+  }
+  // Create a uniform reliable broadcast object.
+  auto urb = std::make_unique<da::broadcast::UniformReliable>(
+      current_process, std::move(perfect_links));
   // Launch a thread that will be receiving packets.
   auto receiver =
       std::make_unique<da::receiver::Receiver>(executor.get(), sock.get());
-  auto receiver_thread = std::thread([&receiver]() { (*receiver)(); });
-  da::link::PerfectLink perfect_link(executor.get(), sock.get(),
-                                     current_process, processes[0].get());
-  perfect_link.sendMessage(123212);
-  sleep(1);
-  // Stop and wait for receiver thread to exit gracefully.
-  receiver->stop();
-  if (receiver_thread.joinable()) {
-    receiver_thread.join();
-  }
-  return 0;
-  // set signal handlers
-  signal(SIGUSR2, start);
-  signal(SIGTERM, stop);
-  signal(SIGINT, stop);
-
-  // parse arguments, including membership
-  // initialize application
-  // start listening for incoming UDP packets
-  printf("Initializing.\n");
-
-  // wait until start signal
-  while (wait_for_start) {
+  auto receiver_thread =
+      std::thread([&receiver, &urb]() { (*receiver)(urb.get()); });
+  // Loop until SIGUSR2 hasn't received.
+  while (!can_start) {
     struct timespec sleep_time;
     sleep_time.tv_sec = 0;
     sleep_time.tv_nsec = 1000;
     nanosleep(&sleep_time, NULL);
   }
-
-  // broadcast messages
-  printf("Broadcasting messages.\n");
-
-  // wait until stopped
-  while (1) {
+  // Start to broadcast messages.
+  LOG("Broadcasting messages...");
+  for (int id = 1; id <= current_process->getMessageCount(); id++) {
+    urb->broadcast(id);
+  }
+  while (can_start) {
     struct timespec sleep_time;
-    sleep_time.tv_sec = 1;
+    sleep_time.tv_sec = 2;
     sleep_time.tv_nsec = 0;
     nanosleep(&sleep_time, NULL);
   }
+  // Stop and wait for receiver thread to exit gracefully.
+  receiver->stop();
+  // TODO(parvmor): Exit gracefully.
+  receiver_thread.~thread();
+  return 0;
 }

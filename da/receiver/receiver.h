@@ -3,6 +3,7 @@
 
 #include <atomic>
 
+#include <da/broadcast/uniform_reliable.h>
 #include <da/executor/executor.h>
 #include <da/link/perfect_link.h>
 #include <da/socket/udp_socket.h>
@@ -21,7 +22,7 @@ class Receiver {
 
   bool isAlive() const { return alive_; }
 
-  void operator()();
+  void operator()(broadcast::UniformReliable* urb);
 
  private:
   std::atomic<bool> alive_;

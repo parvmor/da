@@ -2,6 +2,7 @@
 #define __INCLUDED_DA_LINK_PERFECT_LINK_H_
 
 #include <chrono>
+#include <functional>
 #include <shared_mutex>
 #include <unordered_set>
 
@@ -35,7 +36,7 @@ class PerfectLink {
   // Receives the given message from the foreign process.
   //
   // TODO(parvmor): Send an acknowledgment of receiving back.
-  void recvMessage(int message);
+  bool recvMessage(int message);
 
  private:
   void sendMessageCallback(int message);
