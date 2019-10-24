@@ -7,7 +7,7 @@ BUILD = build
 SRC = da
 OBJS =
 
-.PHONY: bin init clean format all
+.PHONY: bin init clean format run all
 
 all: init bin
 
@@ -27,6 +27,9 @@ init: format clean
 bin: da_proc
 	$(CC) -o $(BIN) $(OBJS)
 
+run: all
+	./da_proc ${PROCESS} membership ${MESSAGES}
+
 da_proc: % : $(SRC)/%.cc util/status process/process init/parser socket/udp_socket executor/executor link/perfect_link receiver/receiver broadcast/uniform_reliable
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
@@ -37,7 +40,7 @@ init/parser: % : $(SRC)/%.cc util/status process/process
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
 
-receiver/receiver: % : $(SRC)/%.cc util/status executor/executor socket/udp_socket broadcast/uniform_reliable link/perfect_link
+receiver/receiver: % : $(SRC)/%.cc util/status executor/executor socket/udp_socket broadcast/uniform_reliable link/perfect_link util/util
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
@@ -47,7 +50,7 @@ broadcast/uniform_reliable: % : $(SRC)/%.cc process/process link/perfect_link
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
 
-link/perfect_link: % : $(SRC)/%.cc util/status process/process socket/udp_socket executor/executor
+link/perfect_link: % : $(SRC)/%.cc util/status process/process socket/udp_socket executor/executor util/util
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
@@ -82,3 +85,7 @@ util/status: % : $(SRC)/%.cc
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
 
+util/util: % : $(SRC)/%.cc
+	mkdir -p $(shell dirname $(BUILD)/$@.o)
+	$(CC) -c -o $(BUILD)/$@.o $<
+	$(eval OBJS += $(BUILD)/$@.o)
