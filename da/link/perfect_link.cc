@@ -14,20 +14,14 @@
 #include <da/util/logging.h>
 #include <da/util/status.h>
 #include <da/util/statusor.h>
+#include <da/util/util.h>
 
 namespace da {
 namespace link {
 namespace {
 
 std::string constructMessage(int process_id, int message) {
-  std::string msg;
-  for (int i = 1; i <= int(sizeof(int)); i++) {
-    msg += static_cast<char>((process_id >> (8 * (sizeof(int) - i))) & 0xFF);
-  }
-  for (int i = 1; i <= int(sizeof(int)); i++) {
-    msg += static_cast<char>((message >> (8 * (sizeof(int) - i))) & 0xFF);
-  }
-  return msg;
+  return util::integerToString(process_id) + util::integerToString(message);
 }
 
 }  // namespace
