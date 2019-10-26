@@ -4,13 +4,13 @@
 #define __INCLUDED_DA_SOCKET_SOCKET_H_
 
 #include <arpa/inet.h>
-#include <cstring>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <string>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <cstring>
+#include <string>
 
 #include <da/util/status.h>
 #include <da/util/statusor.h>

@@ -9,14 +9,15 @@ namespace da {
 namespace receiver {
 namespace {
 
-std::pair<int, int> getProcessIdAndMessage(const char* buffer) {
+std::tuple<int, int, std::string> getProcessIdAndMessage(const char* buffer) {
   return {util::stringToInteger(buffer),
-          util::stringToInteger(buffer + sizeof(int))};
+          util::stringToInteger(buffer + sizeof(int)),
+          std::string(buffer + 2 * sizeof(int))};
 }
 
 }  // namespace
 
-void Receiver::operator()(broadcast::UniformReliable* urb) {
+void Receiver::operator()() {
   while (alive_) {
     char buffer[link::msg_length];
     const auto int_or = sock_->recv(buffer, link::msg_length);
@@ -29,14 +30,22 @@ void Receiver::operator()(broadcast::UniformReliable* urb) {
           " from the socket. Received length: ", int_or.value());
       continue;
     }
-    int process_id, message;
-    std::tie(process_id, message) = getProcessIdAndMessage(buffer);
-    LOG("Received message: ", message, " from process with id ", process_id);
-    executor_->add([&urb, process_id, message]() {
-      urb->deliver(process_id, message);
-    });
+    int process_id, ack;
+    std::string message;
+    std::tie(process_id, ack, message) = getProcessIdAndMessage(buffer);
+    // LOG("RECEIVING FROM ", process_id, " MESSAGE ", message, " ACK ", ack);
+    LOG("Received message: ", message, " from process with id: ", process_id);
+    if (process_id < 1 || process_id > int((*perfect_links_).size())) {
+      LOG("Received message: ", message,
+          " from process with unknown id: ", process_id);
+    } else {
+      std::unique_ptr<da::link::PerfectLink>* link =
+          &(*perfect_links_)[process_id - 1];
+      executor_->add(
+          [link, message, ack]() { (*link)->recvMessage(message, ack); });
+    }
   }
 }
 
-}  // namespace executor
+}  // namespace receiver
 }  // namespace da
