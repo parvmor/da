@@ -43,7 +43,7 @@ class UniformReliable {
 
   const process::Process* local_process_;
   std::vector<std::unique_ptr<link::PerfectLink>> perfect_links_;
-  std::shared_timed_mutex mutex_;
+  std::mutex mutex_;
   // Used to assign a unique identity to the messages.
   util::IdentityManager<std::string> identity_manager_;
   // A map from messages that have been received to the set of process_ids from
