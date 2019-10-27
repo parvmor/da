@@ -13,16 +13,16 @@ namespace broadcast {
 class UniformReliable {
  public:
   UniformReliable(
-      process::Process* local_process,
-      std::vector<std::unique_ptr<link::PerfectLink>>* perfect_links);
+      const process::Process* local_process,
+      std::vector<std::unique_ptr<link::PerfectLink>> perfect_links);
 
-  void broadcast(int message);
+  void broadcast(std::shared_ptr<std::string> message);
 
-  bool deliver(int process_id, std::string message);
+  bool deliver(std::shared_ptr<char[]> message);
 
  private:
-  process::Process* local_process_;
-  std::vector<std::unique_ptr<link::PerfectLink>>* perfect_links_;
+  const process::Process* local_process_;
+  std::vector<std::unique_ptr<link::PerfectLink>> perfect_links_;
 };
 
 }  // namespace broadcast

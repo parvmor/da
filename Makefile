@@ -45,12 +45,12 @@ receiver/receiver: % : $(SRC)/%.cc util/status executor/executor socket/udp_sock
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
 
-broadcast/uniform_reliable: % : $(SRC)/%.cc process/process link/perfect_link 
+broadcast/uniform_reliable: % : $(SRC)/%.cc process/process link/perfect_link message/message
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
 
-link/perfect_link: % : $(SRC)/%.cc util/status process/process socket/udp_socket executor/executor util/util
+link/perfect_link: % : $(SRC)/%.cc util/status process/process socket/udp_socket executor/executor util/util message/message
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
@@ -61,6 +61,11 @@ executor/executor: % : $(SRC)/%.cc
 	$(eval OBJS += $(BUILD)/$@.o)
 
 process/process: % : $(SRC)/%.cc util/status
+	mkdir -p $(shell dirname $(BUILD)/$@.o)
+	$(CC) -c -o $(BUILD)/$@.o $<
+	$(eval OBJS += $(BUILD)/$@.o)
+
+message/message: % : $(SRC)/%.cc
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)

@@ -8,7 +8,6 @@
 #include <sstream>
 #include <string>
 
-#include <da/broadcast/uniform_reliable.h>
 #include <da/executor/executor.h>
 #include <da/process/process.h>
 #include <da/socket/udp_socket.h>
@@ -19,22 +18,15 @@
 
 namespace da {
 namespace link {
-namespace {
 
-std::string constructMessage(int process_id, int ack, std::string message) {
-  return util::integerToString(process_id) + util::integerToString(ack) +
-         message;
-}
-
-}  // namespace
-
-const int msg_length = 255 * sizeof(int);
+const int max_length = 256 * sizeof(int);
+const int min_length = 2 * sizeof(int) + sizeof(bool);
 
 PerfectLink::PerfectLink(executor::Executor* executor, socket::UDPSocket* sock,
                          const process::Process* local_process,
                          const process::Process* foreign_process)
     : PerfectLink(executor, sock, local_process, foreign_process,
-                  std::chrono::microseconds(5000000)) {}
+                  std::chrono::microseconds(100)) {}
 
 PerfectLink::PerfectLink(executor::Executor* executor, socket::UDPSocket* sock,
                          const process::Process* local_process,
@@ -51,90 +43,70 @@ PerfectLink::~PerfectLink() {
   undelivered_messages_.clear();
 }
 
-void PerfectLink::setUrb(std::unique_ptr<broadcast::UniformReliable>* urb) {
-  this->urb_ = urb;
-}
-
-void PerfectLink::sendMessage(std::string message) {
+void PerfectLink::sendMessage(std::shared_ptr<std::string> message) {
   {
     std::unique_lock<std::shared_timed_mutex> lock(mutex_);
-    undelivered_messages_.insert(message);
+    undelivered_messages_.insert(*message);
   }
   sendMessageCallback(message);
 }
 
-std::tuple<int, int, const char*> getProcessIdAndMessage(const char* buffer) {
-  return {util::stringToInteger(buffer),
-          util::stringToInteger(buffer + sizeof(int)),
-          buffer + 2 * sizeof(int)};
-}
-
-void PerfectLink::sendMessageCallback(std::string message) {
+void PerfectLink::sendMessageCallback(std::shared_ptr<std::string> message) {
   {
     std::shared_lock<std::shared_timed_mutex> lock(mutex_);
-    if (undelivered_messages_.find(message) == undelivered_messages_.end()) {
+    if (undelivered_messages_.find(*message) == undelivered_messages_.end()) {
       return;
     }
   }
-  const auto msg_str =
-      constructMessage(local_process_->getId(), 0, message).data();
-
-  LOG("Sending message '", local_process_->getId(), " ", message,
-      "' of length ", msg_length, " to ", *foreign_process_);
+  // The message is non-ascii and hence, cannot be printed.
+  LOG("Sending message '", util::stringToBinary(message.get()), "' of length ",
+      message->size(), " to ", *foreign_process_);
   const auto status =
-      sock_->sendTo(msg_str, msg_length, foreign_process_->getIPAddr(),
-                    foreign_process_->getPort());
+      sock_->sendTo(message->data(), message->size(),
+                    foreign_process_->getIPAddr(), foreign_process_->getPort());
   if (!status.ok()) {
-    LOG("Sending of message '", local_process_->getId(), " ", message,
-        "' of length ", msg_length, " to ", *foreign_process_,
+    LOG("Sending of message '", util::stringToBinary(message.get()),
+        "' of length ", message->size(), " to ", *foreign_process_,
         " failed. Status: ", status);
   }
   executor_->schedule(
       interval_, std::bind(&PerfectLink::sendMessageCallback, this, message));
 }
 
-void PerfectLink::sendAckMessage(std::string message) {
-  const auto msg_str =
-      constructMessage(local_process_->getId(), 1, message).data();
-  // LOG("Sending message '", local_process_->getId(), " ", message,
-  //    "' of length ", msg_length, " to ", *foreign_process_);
+void PerfectLink::ackMessage(const std::string& msg_str) {
   const auto status =
-      sock_->sendTo(msg_str, msg_length, foreign_process_->getIPAddr(),
-                    foreign_process_->getPort());
+      sock_->sendTo(msg_str.data(), msg_str.size(),
+                    foreign_process_->getIPAddr(), foreign_process_->getPort());
   if (!status.ok()) {
-    LOG("Sending of message '", local_process_->getId(), " ", message,
-        "' of length ", msg_length, " to ", *foreign_process_,
-        " failed. Status: ", status);
+    LOG("Sending of message '", util::stringToBinary(&msg_str), "' to ",
+        *foreign_process_, " failed. Status: ", status);
   }
 }
 
-bool PerfectLink::recvMessage(std::string message, int ack) {
-  /*if (message < 1 || message > local_process_->getMessageCount()) {
-    LOG("Received an unknown message: ", message, " from the process ",
-        foreign_process_, " by process ", local_process_);
-    return false;
-  }*/
-  if (ack == 1) {
+bool PerfectLink::recvMessage(const message::Message* message) {
+  const auto msg_ack_str = message->toAckString();
+  if (message->isAck()) {
     {
-      std::shared_lock<std::shared_timed_mutex> lock(mutex_);
-      undelivered_messages_.erase(message);
+      std::unique_lock<std::shared_timed_mutex> lock(mutex_);
+      if (undelivered_messages_.find(msg_ack_str) ==
+          undelivered_messages_.end()) {
+        LOG("Unable to find the message: ", *message, "in ",
+            "undelivered_messages_");
+        return false;
+      }
+      undelivered_messages_.erase(msg_ack_str);
     }
     return false;
-  } else if (ack == 0) {
-    sendAckMessage(message);
+  } else {
+    ackMessage(msg_ack_str);
   }
-  LOG("Received message '", message, "' from process ", foreign_process_,
-      " by process ", local_process_);
+  const auto msg_str = message->toString();
   std::unique_lock<std::shared_timed_mutex> lock(mutex_);
-  if (delivered_messages_.find(message) != delivered_messages_.end()) {
+  if (delivered_messages_.find(msg_str) != delivered_messages_.end()) {
     // We have already received this message.
     return false;
   }
-  delivered_messages_.insert(message);
-
-  std::unique_ptr<broadcast::UniformReliable>* urb = urb_;
-  int id = (*foreign_process_).getId();
-  executor_->add([urb, id, message]() { (*urb)->deliver(id, message); });
+  delivered_messages_.insert(msg_str);
   return true;
 }
 

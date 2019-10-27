@@ -1,4 +1,7 @@
 #include <da/executor/executor.h>
+
+#include <da/util/util.h>
+
 namespace da {
 namespace executor {
 
@@ -46,16 +49,15 @@ void Executor::Worker::operator()() {
       if (!executor_->queue_.dequeue(task)) {
         continue;
       }
-      // If the task is scheduled to be executed in the future. Enque it, sleep
-      // for 10ms and then continue.
-      if (task.getTime() > std::chrono::high_resolution_clock::now()) {
-        executor_->queue_.enqueue(task);
-        struct timespec sleep_time;
-        sleep_time.tv_sec = 0;
-        sleep_time.tv_nsec = 10000000;
-        nanosleep(&sleep_time, NULL);
-        continue;
-      }
+    }
+    // If task is to be executed in the future enqueue it, sleep for 1
+    // micro-second and continue.
+    // There is no need to wake up another thread since, this thread will
+    // execute the task in the next loop.
+    if (task.getTime() > std::chrono::high_resolution_clock::now()) {
+      executor_->queue_.enqueue(task);
+      util::nanosleep(1000);
+      continue;
     }
     task();
   }

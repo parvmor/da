@@ -15,6 +15,7 @@
 #include <da/socket/udp_socket.h>
 #include <da/util/logging.h>
 #include <da/util/statusor.h>
+#include <da/util/util.h>
 
 namespace {
 
@@ -24,26 +25,20 @@ void registerSignalHandlers() {
   // Register a function to toggle the can_start when SIGUSR2 is received.
   // NOTE: Lambda and function pointers have different types and hence, a
   // positive lambda has been used.
-  signal(
-      SIGUSR2, +[](int signal) { can_start = true; });
+  signal(SIGUSR2, +[](int signal) { can_start = true; });
   // TODO(parvmor): Fix the following signal handlers.
-  signal(
-      SIGTERM, +[](int signal) { can_start = false; });
-  signal(
-      SIGINT, +[](int signal) { can_start = false; });
+  signal(SIGTERM, +[](int signal) { can_start = false; });
+  signal(SIGINT, +[](int signal) { can_start = false; });
 }
 
 void stop(int signum) {
   // reset signal handlers to default
   signal(SIGTERM, SIG_DFL);
   signal(SIGINT, SIG_DFL);
-
   // immediately stop network packet processing
   printf("Immediately stopping network packet processing.\n");
-
   // write/flush output file if necessary
   printf("Writing output.\n");
-
   // exit directly from signal handler
   exit(0);
 }
@@ -86,18 +81,14 @@ int main(int argc, char** argv) {
     perfect_links.emplace_back(std::make_unique<da::link::PerfectLink>(
         executor.get(), sock.get(), current_process, process.get()));
   }
-
   // Create a uniform reliable broadcast object.
-  auto urb = std::make_unique<da::broadcast::UniformReliable>(current_process,
-                                                              &perfect_links);
-
-  for (long unsigned int i = 0; i < perfect_links.size(); i++)
-    perfect_links[i]->setUrb(&urb);
-
+  auto urb = std::make_unique<da::broadcast::UniformReliable>(
+      current_process, std::move(perfect_links));
   // Launch a thread that will be receiving packets.
-  auto receiver = std::make_unique<da::receiver::Receiver>(
-      executor.get(), sock.get(), &perfect_links);
-  auto receiver_thread = std::thread([&receiver]() { (*receiver)(); });
+  auto receiver =
+      std::make_unique<da::receiver::Receiver>(executor.get(), sock.get());
+  auto receiver_thread =
+      std::thread([&receiver, &urb]() { (*receiver)(urb.get()); });
   // Loop until SIGUSR2 hasn't received.
   while (!can_start) {
     struct timespec sleep_time;
@@ -108,7 +99,8 @@ int main(int argc, char** argv) {
   // Start to broadcast messages.
   LOG("Broadcasting messages...");
   for (int id = 1; id <= current_process->getMessageCount(); id++) {
-    urb->broadcast(id);
+    urb->broadcast(std::make_shared<std::string>(
+        da::message::Message(current_process->getId(), id).toString()));
   }
   while (can_start) {
     struct timespec sleep_time;
