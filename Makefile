@@ -1,7 +1,7 @@
 COMPILER = g++
 DEBUG_CFLAGS = -Wall -I. -std=c++14 -pthread -g -DENABLE_LOG -fsanitize=undefined
 CFLAGS = -Wall -I. -O3 -std=c++14 -pthread
-CC = $(COMPILER) $(DEBUG_CFLAGS)
+CC = $(COMPILER) $(CFLAGS)
 BIN = da_proc
 BUILD = build
 SRC = da

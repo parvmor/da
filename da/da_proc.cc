@@ -7,6 +7,9 @@
 #include <memory>
 #include <thread>
 
+#include "spdlog/sinks/basic_file_sink.h"
+#include "spdlog/spdlog.h"
+
 #include <da/broadcast/uniform_reliable.h>
 #include <da/executor/executor.h>
 #include <da/init/parser.h>
@@ -20,15 +23,25 @@
 namespace {
 
 std::atomic<bool> can_start{false};
+std::shared_ptr<spdlog::logger> file_logger;
 
 void registerSignalHandlers() {
   // Register a function to toggle the can_start when SIGUSR2 is received.
   // NOTE: Lambda and function pointers have different types and hence, a
   // positive lambda has been used.
-  signal(SIGUSR2, +[](int signal) { can_start = true; });
+  signal(
+      SIGUSR2, +[](int signal) { can_start = true; });
   // TODO(parvmor): Fix the following signal handlers.
-  signal(SIGTERM, +[](int signal) { can_start = false; });
-  signal(SIGINT, +[](int signal) { can_start = false; });
+  signal(
+      SIGTERM, +[](int signal) {
+        can_start = false;
+        file_logger->flush();
+      });
+  signal(
+      SIGINT, +[](int signal) {
+        can_start = false;
+        file_logger->flush();
+      });
 }
 
 void stop(int signum) {
@@ -70,6 +83,13 @@ int main(int argc, char** argv) {
                          "Could not find current process."));
     return 1;
   }
+
+  file_logger = spdlog::basic_logger_mt(
+      "basic_logger",
+      "da_proc_" + std::to_string(current_process->getId()) + ".out");
+  // spdlog::set_default_logger(file_logger);
+  spdlog::set_pattern("%v");
+
   // Create executor and a UDP socket for current process.
   auto executor = std::make_unique<da::executor::Executor>();
   auto sock = std::make_unique<da::socket::UDPSocket>(
@@ -86,7 +106,7 @@ int main(int argc, char** argv) {
       current_process, std::move(perfect_links));
   // Create a uniform FIFO reliable broadcast object.
   auto fifo_urb = std::make_unique<da::broadcast::UniformFIFOReliable>(
-      current_process, std::move(urb), processes.size());
+      current_process, std::move(urb), processes.size(), file_logger);
   // Launch a thread that will be receiving packets.
   auto receiver =
       std::make_unique<da::receiver::Receiver>(executor.get(), sock.get());
@@ -115,5 +135,6 @@ int main(int argc, char** argv) {
   receiver->stop();
   // TODO(parvmor): Exit gracefully.
   receiver_thread.~thread();
+  file_logger->flush();
   return 0;
 }
