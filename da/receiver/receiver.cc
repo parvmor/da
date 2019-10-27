@@ -8,7 +8,7 @@
 namespace da {
 namespace receiver {
 
-void Receiver::operator()(broadcast::UniformReliable* urb) {
+void Receiver::operator()(broadcast::UniformFIFOReliable* fifo_urb) {
   while (alive_) {
     auto buffer = std::make_unique<char[]>(link::max_length);
     const auto int_or = sock_->recv(buffer.get(), link::max_length);
@@ -16,14 +16,15 @@ void Receiver::operator()(broadcast::UniformReliable* urb) {
       LOG("Receiving from the socket failed. Status: ", int_or.status());
       continue;
     }
-    if (int_or.value() < broadcast::urb_min_length) {
+    if (int_or.value() < broadcast::fifo_min_length) {
       LOG("Unable to receive a message of length atleast ", link::min_length,
           " from the socket. Received length: ", int_or.value());
       continue;
     }
     std::string msg(buffer.get(), int_or.value());
-    executor_->add(
-        [&urb, msg = std::move(msg)]() { urb->deliver(std::move(msg)); });
+    executor_->add([&fifo_urb, msg = std::move(msg)]() {
+      fifo_urb->deliver(std::move(msg));
+    });
   }
 }
 

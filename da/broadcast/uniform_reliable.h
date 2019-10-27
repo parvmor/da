@@ -33,7 +33,7 @@ class UniformReliable {
   int constructIdentity(const std::string* msg);
 
   // Triggers the perfect link delivery.
-  bool deliverToPerfectLink(const std::string& msg, int process_id);
+  bool deliverToPerfectLink(const std::string& msg);
 
   // Rebroadcasts the message received from someone.
   void rebroadcast(const std::string* msg);

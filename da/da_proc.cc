@@ -84,11 +84,14 @@ int main(int argc, char** argv) {
   // Create a uniform reliable broadcast object.
   auto urb = std::make_unique<da::broadcast::UniformReliable>(
       current_process, std::move(perfect_links));
+  // Create a uniform FIFO reliable broadcast object.
+  auto fifo_urb = std::make_unique<da::broadcast::UniformFIFOReliable>(
+      current_process, std::move(urb), processes.size());
   // Launch a thread that will be receiving packets.
   auto receiver =
       std::make_unique<da::receiver::Receiver>(executor.get(), sock.get());
   auto receiver_thread =
-      std::thread([&receiver, &urb]() { (*receiver)(urb.get()); });
+      std::thread([&receiver, &fifo_urb]() { (*receiver)(fifo_urb.get()); });
   // Loop until SIGUSR2 hasn't received.
   while (!can_start) {
     struct timespec sleep_time;
@@ -100,7 +103,7 @@ int main(int argc, char** argv) {
   LOG("Broadcasting messages...");
   for (int id = 1; id <= current_process->getMessageCount(); id++) {
     const std::string msg = da::util::integerToString(id);
-    urb->broadcast(&msg);
+    fifo_urb->broadcast(&msg);
   }
   while (can_start) {
     struct timespec sleep_time;
