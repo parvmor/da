@@ -99,8 +99,8 @@ int main(int argc, char** argv) {
   // Start to broadcast messages.
   LOG("Broadcasting messages...");
   for (int id = 1; id <= current_process->getMessageCount(); id++) {
-    urb->broadcast(std::make_shared<std::string>(
-        da::message::Message(current_process->getId(), id).toString()));
+    const std::string msg = da::util::integerToString(id);
+    urb->broadcast(&msg);
   }
   while (can_start) {
     struct timespec sleep_time;

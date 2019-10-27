@@ -1,9 +1,8 @@
 #include <da/receiver/receiver.h>
 
-#include <functional>
 #include <memory>
+#include <string>
 
-#include <da/message/message.h>
 #include <da/util/logging.h>
 
 namespace da {
@@ -11,19 +10,20 @@ namespace receiver {
 
 void Receiver::operator()(broadcast::UniformReliable* urb) {
   while (alive_) {
-    auto buffer = new char[link::max_length];
-    const auto int_or = sock_->recv(buffer, link::max_length);
+    auto buffer = std::make_unique<char[]>(link::max_length);
+    const auto int_or = sock_->recv(buffer.get(), link::max_length);
     if (!int_or.ok()) {
       LOG("Receiving from the socket failed. Status: ", int_or.status());
       continue;
     }
-    if (int_or.value() < link::min_length) {
+    if (int_or.value() < broadcast::urb_min_length) {
       LOG("Unable to receive a message of length atleast ", link::min_length,
           " from the socket. Received length: ", int_or.value());
       continue;
     }
+    std::string msg(buffer.get(), int_or.value());
     executor_->add(
-        [&urb, buffer]() { urb->deliver(std::unique_ptr<char[]>(buffer)); });
+        [&urb, msg = std::move(msg)]() { urb->deliver(std::move(msg)); });
   }
 }
 

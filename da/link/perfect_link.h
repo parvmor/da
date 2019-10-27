@@ -5,12 +5,14 @@
 #include <functional>
 #include <memory>
 #include <shared_mutex>
+#include <string>
+#include <unordered_map>
 #include <unordered_set>
 
 #include <da/executor/executor.h>
-#include <da/message/message.h>
 #include <da/process/process.h>
 #include <da/socket/udp_socket.h>
+#include <da/util/identity_manager.h>
 #include <da/util/status.h>
 #include <da/util/statusor.h>
 
@@ -34,17 +36,21 @@ class PerfectLink {
   ~PerfectLink();
 
   // Sends a message containing the given message id to the foreign process.
-  void sendMessage(std::shared_ptr<std::string> message);
+  void sendMessage(const std::string* msg);
 
-  // Receives the given message from the foreign process.
-  bool recvMessage(const message::Message* message);
+  // Receives the provided message at the level of perfect links.
+  bool recvMessage(const std::string& msg);
 
  private:
-  // Schedules a callback to send message periodically until an ack is received.
-  void sendMessageCallback(std::shared_ptr<std::string> message);
+  // Schedules a callback to send message periodically until an ack is
+  // received.
+  void sendMessageCallback(int id);
 
   // Sends an acknowledgement when of the received message.
-  void ackMessage(const std::string& message);
+  void ackMessage(const std::string& msg);
+
+  // Constructs and returns a unique identity for the given message.
+  int constructIdentity(const std::string* msg);
 
   executor::Executor* executor_;
   socket::UDPSocket* sock_;
@@ -52,12 +58,14 @@ class PerfectLink {
   const process::Process* foreign_process_;
   const std::chrono::microseconds interval_;
   std::shared_timed_mutex mutex_;
+  // Used to assign a unique identity to messages at the current layer.
+  util::IdentityManager<std::string> identity_manager_;
   // Denotes the set of messages sent to foreign process that have not been
   // acknowledged yet.
-  std::unordered_set<std::string> undelivered_messages_;
+  std::unordered_set<int> undelivered_messages_;
   // Denotes the set of messages received from foreign process that have not
   // been acknowledged yet.
-  std::unordered_set<std::string> delivered_messages_;
+  std::unordered_set<int> delivered_messages_;
 };
 
 }  // namespace link

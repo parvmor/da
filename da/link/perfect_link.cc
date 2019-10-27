@@ -18,9 +18,23 @@
 
 namespace da {
 namespace link {
+namespace {
+
+// Assumes that message has a valid minimum length.
+bool isAckMessage(const std::string& msg) {
+  return util::stringToBool(msg.data() + sizeof(int));
+}
+
+// Assumes that message has a valid minimum length.
+std::string constructInverseMessage(std::string msg, bool ack = true) {
+  msg[sizeof(int)] = util::boolToString(ack)[0];
+  return msg;
+}
+
+}  // namespace
 
 const int max_length = 256 * sizeof(int);
-const int min_length = 2 * sizeof(int) + sizeof(bool);
+const int min_length = sizeof(int) + sizeof(bool);
 
 PerfectLink::PerfectLink(executor::Executor* executor, socket::UDPSocket* sock,
                          const process::Process* local_process,
@@ -43,70 +57,79 @@ PerfectLink::~PerfectLink() {
   undelivered_messages_.clear();
 }
 
-void PerfectLink::sendMessage(std::shared_ptr<std::string> message) {
-  {
-    std::unique_lock<std::shared_timed_mutex> lock(mutex_);
-    undelivered_messages_.insert(*message);
-  }
-  sendMessageCallback(message);
+int PerfectLink::constructIdentity(const std::string* msg) {
+  using namespace std::string_literals;
+  std::string link_msg = ""s;
+  link_msg += util::integerToString(local_process_->getId());
+  link_msg += util::boolToString(false);
+  link_msg += *msg;
+  return identity_manager_.assignId(link_msg);
 }
 
-void PerfectLink::sendMessageCallback(std::shared_ptr<std::string> message) {
+void PerfectLink::sendMessage(const std::string* msg) {
+  int id = constructIdentity(msg);
+  {
+    std::unique_lock<std::shared_timed_mutex> lock(mutex_);
+    undelivered_messages_.insert(id);
+  }
+  sendMessageCallback(id);
+}
+
+void PerfectLink::sendMessageCallback(int id) {
   {
     std::shared_lock<std::shared_timed_mutex> lock(mutex_);
-    if (undelivered_messages_.find(*message) == undelivered_messages_.end()) {
+    if (undelivered_messages_.find(id) == undelivered_messages_.end()) {
       return;
     }
   }
+  const std::string* msg = identity_manager_.getValue(id);
   // The message is non-ascii and hence, cannot be printed.
-  LOG("Sending message '", util::stringToBinary(message.get()), "' of length ",
-      message->size(), " to ", *foreign_process_);
+  LOG("Sending message '", util::stringToBinary(msg), "' to ",
+      *foreign_process_);
   const auto status =
-      sock_->sendTo(message->data(), message->size(),
-                    foreign_process_->getIPAddr(), foreign_process_->getPort());
+      sock_->sendTo(msg->data(), msg->size(), foreign_process_->getIPAddr(),
+                    foreign_process_->getPort());
   if (!status.ok()) {
-    LOG("Sending of message '", util::stringToBinary(message.get()),
-        "' of length ", message->size(), " to ", *foreign_process_,
-        " failed. Status: ", status);
+    LOG("Sending of message '", util::stringToBinary(msg), "' to ",
+        *foreign_process_, " failed. Status: ", status);
   }
-  executor_->schedule(
-      interval_, std::bind(&PerfectLink::sendMessageCallback, this, message));
+  executor_->schedule(interval_,
+                      std::bind(&PerfectLink::sendMessageCallback, this, id));
 }
 
-void PerfectLink::ackMessage(const std::string& msg_str) {
+void PerfectLink::ackMessage(const std::string& msg) {
+  const std::string ack_msg = constructInverseMessage(msg, true);
   const auto status =
-      sock_->sendTo(msg_str.data(), msg_str.size(),
+      sock_->sendTo(ack_msg.data(), ack_msg.size(),
                     foreign_process_->getIPAddr(), foreign_process_->getPort());
   if (!status.ok()) {
-    LOG("Sending of message '", util::stringToBinary(&msg_str), "' to ",
+    LOG("Sending of message '", util::stringToBinary(&ack_msg), "' to ",
         *foreign_process_, " failed. Status: ", status);
   }
 }
 
-bool PerfectLink::recvMessage(const message::Message* message) {
-  const auto msg_ack_str = message->toAckString();
-  if (message->isAck()) {
+bool PerfectLink::recvMessage(const std::string& msg) {
+  if (isAckMessage(msg)) {
+    // The inverse message must already be there in the identity manager.
+    int id = identity_manager_.getId(constructInverseMessage(msg, false));
+    if (id == -1) {
+      return false;
+    }
     {
       std::unique_lock<std::shared_timed_mutex> lock(mutex_);
-      if (undelivered_messages_.find(msg_ack_str) ==
-          undelivered_messages_.end()) {
-        LOG("Unable to find the message: ", *message, "in ",
-            "undelivered_messages_");
-        return false;
-      }
-      undelivered_messages_.erase(msg_ack_str);
+      undelivered_messages_.erase(id);
     }
     return false;
-  } else {
-    ackMessage(msg_ack_str);
   }
-  const auto msg_str = message->toString();
+  ackMessage(msg);
+  // This message might be a new one.
+  int id = identity_manager_.assignId(msg);
   std::unique_lock<std::shared_timed_mutex> lock(mutex_);
-  if (delivered_messages_.find(msg_str) != delivered_messages_.end()) {
+  if (delivered_messages_.find(id) != delivered_messages_.end()) {
     // We have already received this message.
     return false;
   }
-  delivered_messages_.insert(msg_str);
+  delivered_messages_.insert(id);
   return true;
 }
 
