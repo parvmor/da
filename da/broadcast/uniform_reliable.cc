@@ -54,8 +54,10 @@ bool UniformReliable::deliverToPerfectLink(const std::string& msg,
 void UniformReliable::broadcast(const std::string* msg) {
   int id = constructIdentity(msg);
   {
-    std::unique_lock<std::shared_timed_mutex> lock(mutex_);
-    received_messages_[id] = {};
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (received_messages_.find(id) == received_messages_.end()) {
+      received_messages_[id] = {};
+    }
   }
   const std::string* broadcast_msg = identity_manager_.getValue(id);
   for (const auto& perfect_link : perfect_links_) {
@@ -70,6 +72,7 @@ void UniformReliable::rebroadcast(const std::string* msg) {
 }
 
 bool UniformReliable::canDeliver(int id) {
+  LOG(id, ' ', received_messages_[id].size(), ' ', perfect_links_.size());
   if (received_messages_[id].size() <= perfect_links_.size() / 2) {
     return false;
   }
@@ -82,7 +85,9 @@ bool UniformReliable::canDeliver(int id) {
 bool UniformReliable::deliver(const std::string& msg) {
   // Find the perfect link and deliver at the level of perfect link first.
   int process_id = unpackProcessId(msg);
-  deliverToPerfectLink(msg, process_id);
+  if (!deliverToPerfectLink(msg, process_id)) {
+    return false;
+  }
   // Now deliver at the level of uniform reliable broadcast.
   std::string broadcast_msg(msg.data() + link::min_length,
                             msg.size() - link::min_length);
@@ -90,7 +95,7 @@ bool UniformReliable::deliver(const std::string& msg) {
   // Update the process id to that of unifrom reliable.
   process_id = unpackProcessId(broadcast_msg);
   {
-    std::unique_lock<std::shared_timed_mutex> lock(mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     // Rebroadcast the message if received for the first time.
     if (received_messages_.find(id) == received_messages_.end()) {
       received_messages_[id] = {};
@@ -101,6 +106,7 @@ bool UniformReliable::deliver(const std::string& msg) {
       // Acquire the lock once again.
       lock.lock();
     }
+    LOG("Inserting message: ", id, " process_id: ", process_id);
     received_messages_[id].insert(process_id);
     if (canDeliver(id)) {
       delivered_messages_.insert(id);

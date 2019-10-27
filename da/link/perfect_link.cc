@@ -26,7 +26,11 @@ bool isAckMessage(const std::string& msg) {
 }
 
 // Assumes that message has a valid minimum length.
-std::string constructInverseMessage(std::string msg, bool ack = true) {
+std::string constructInverseMessage(std::string msg, int process_id, bool ack) {
+  std::string process_id_str = util::integerToString(process_id);
+  for (int i = 0; i < int(sizeof(int)); i++) {
+    msg[i] = process_id_str[i];
+  }
   msg[sizeof(int)] = util::boolToString(ack)[0];
   return msg;
 }
@@ -98,7 +102,8 @@ void PerfectLink::sendMessageCallback(int id) {
 }
 
 void PerfectLink::ackMessage(const std::string& msg) {
-  const std::string ack_msg = constructInverseMessage(msg, true);
+  const std::string ack_msg =
+      constructInverseMessage(msg, local_process_->getId(), true);
   const auto status =
       sock_->sendTo(ack_msg.data(), ack_msg.size(),
                     foreign_process_->getIPAddr(), foreign_process_->getPort());
@@ -110,9 +115,12 @@ void PerfectLink::ackMessage(const std::string& msg) {
 
 bool PerfectLink::recvMessage(const std::string& msg) {
   if (isAckMessage(msg)) {
+    LOG("Received an ACK message: ", util::stringToBinary(&msg));
     // The inverse message must already be there in the identity manager.
-    int id = identity_manager_.getId(constructInverseMessage(msg, false));
+    int id = identity_manager_.getId(
+        constructInverseMessage(msg, local_process_->getId(), false));
     if (id == -1) {
+      LOG("Found a -1....");
       return false;
     }
     {
@@ -127,6 +135,7 @@ bool PerfectLink::recvMessage(const std::string& msg) {
   std::unique_lock<std::shared_timed_mutex> lock(mutex_);
   if (delivered_messages_.find(id) != delivered_messages_.end()) {
     // We have already received this message.
+    LOG("Found a already delievered message: ", id);
     return false;
   }
   delivered_messages_.insert(id);
