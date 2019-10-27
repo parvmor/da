@@ -13,6 +13,9 @@
 #include <da/util/statusor.h>
 
 namespace da {
+namespace broadcast {
+class UniformReliable;
+}
 namespace link {
 
 extern const int msg_length;
@@ -31,28 +34,31 @@ class PerfectLink {
   ~PerfectLink();
 
   // Sends a message containing the given message id to the foreign process.
-  void sendMessage(int message);
+  void sendMessage(std::string message);
+
+  void setUrb(std::unique_ptr<broadcast::UniformReliable>* urb);
 
   // Receives the given message from the foreign process.
   //
   // TODO(parvmor): Send an acknowledgment of receiving back.
-  bool recvMessage(int message);
+  bool recvMessage(std::string message, int ack);
 
  private:
-  void sendMessageCallback(int message);
-
+  void sendMessageCallback(std::string message);
+  void sendAckMessage(std::string message);
   executor::Executor* executor_;
   socket::UDPSocket* sock_;
+  std::unique_ptr<broadcast::UniformReliable>* urb_;
   const process::Process* local_process_;
   const process::Process* foreign_process_;
   const std::chrono::microseconds interval_;
   std::shared_timed_mutex mutex_;
   // Denotes the set of messages sent to foreign process that have not been
   // acknowledged yet.
-  std::unordered_set<int> undelivered_messages_;
+  std::unordered_set<std::string> undelivered_messages_;
   // Denotes the set of messages received from foreign process that have not
   // been acknowledged yet.
-  std::unordered_set<int> delivered_messages_;
+  std::unordered_set<std::string> delivered_messages_;
 };
 
 }  // namespace link
