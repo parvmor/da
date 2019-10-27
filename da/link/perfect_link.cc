@@ -34,7 +34,7 @@ PerfectLink::PerfectLink(executor::Executor* executor, socket::UDPSocket* sock,
                          const process::Process* local_process,
                          const process::Process* foreign_process)
     : PerfectLink(executor, sock, local_process, foreign_process,
-                  std::chrono::microseconds(5000000)) {}
+                  std::chrono::microseconds(1000)) {}
 
 PerfectLink::PerfectLink(executor::Executor* executor, socket::UDPSocket* sock,
                          const process::Process* local_process,
@@ -79,8 +79,8 @@ void PerfectLink::sendMessageCallback(std::string message) {
   const auto msg_str =
       constructMessage(local_process_->getId(), 0, message).data();
 
-  LOG("Sending message '", local_process_->getId(), " ", message,
-      "' of length ", msg_length, " to ", *foreign_process_);
+  // LOG("Sending message '", local_process_->getId(), " ", message,
+  //    "' of length ", msg_length, " to ", *foreign_process_);
   const auto status =
       sock_->sendTo(msg_str, msg_length, foreign_process_->getIPAddr(),
                     foreign_process_->getPort());
@@ -123,8 +123,8 @@ bool PerfectLink::recvMessage(std::string message, int ack) {
   } else if (ack == 0) {
     sendAckMessage(message);
   }
-  LOG("Received message '", message, "' from process ", foreign_process_,
-      " by process ", local_process_);
+  // LOG("Received message '", message, "' from process ", foreign_process_,
+  //    " by process ", local_process_);
   std::unique_lock<std::shared_timed_mutex> lock(mutex_);
   if (delivered_messages_.find(message) != delivered_messages_.end()) {
     // We have already received this message.

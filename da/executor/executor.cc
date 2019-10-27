@@ -52,7 +52,7 @@ void Executor::Worker::operator()() {
         executor_->queue_.enqueue(task);
         struct timespec sleep_time;
         sleep_time.tv_sec = 0;
-        sleep_time.tv_nsec = 10000000;
+        sleep_time.tv_nsec = 1000000;
         nanosleep(&sleep_time, NULL);
         continue;
       }

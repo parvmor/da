@@ -34,7 +34,8 @@ void Receiver::operator()() {
     std::string message;
     std::tie(process_id, ack, message) = getProcessIdAndMessage(buffer);
     // LOG("RECEIVING FROM ", process_id, " MESSAGE ", message, " ACK ", ack);
-    LOG("Received message: ", message, " from process with id: ", process_id);
+    // LOG("Received message: ", message, " from process with id: ",
+    // process_id);
     if (process_id < 1 || process_id > int((*perfect_links_).size())) {
       LOG("Received message: ", message,
           " from process with unknown id: ", process_id);
