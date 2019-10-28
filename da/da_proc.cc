@@ -36,6 +36,15 @@ void registerUsrHandlers() {
   signal(SIGUSR2, +[](int signum) { can_start = true; });
 }
 
+void flushAndExit() {
+  if (file_logger != nullptr) {
+    LOG("Flushing the output.");
+    file_logger->flush();
+  }
+  LOG("Exiting.");
+  exit(0);
+}
+
 void exitHandler(int signum) {
   // Reset the handler to default one.
   signal(SIGTERM, SIG_DFL);
@@ -50,6 +59,8 @@ void exitHandler(int signum) {
   // Stop the executor thread but allow it to finish tasks that are already
   // executing.
   if (executor != nullptr) {
+    LOG("Adding the flusher task in executor.");
+    executor->add(flushAndExit);
     LOG("Stopping the executor.");
     executor->waitForCompletion();
   }
