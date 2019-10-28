@@ -34,6 +34,11 @@ class Executor {
 
   bool isAlive() const { return alive_; }
 
+  void stop() {
+    alive_ = false;
+    queue_.stop();
+  }
+
   void waitForCompletion();
 
   // Adds the function to be executed as soon as possible.

@@ -38,7 +38,9 @@ UniformFIFOReliable::UniformFIFOReliable(const process::Process* local_process,
     : local_process_(local_process),
       urb_(std::move(urb)),
       lsn_(0),
-      file_logger_(file_logger) {
+      file_logger_(file_logger),
+      delivered_msgs_(0),
+      broadcast_msgs_(0) {
   process_data_.reserve(processes);
   for (int i = 0; i < processes; i++) {
     process_data_.emplace_back(std::make_unique<ProcessData>(this));
@@ -63,6 +65,12 @@ bool UniformFIFOReliable::deliverToURB(const std::string& msg) {
 }
 
 void UniformFIFOReliable::broadcast(const std::string* msg) {
+  // Wait until we have seen a considerable amount of delivered messages.
+  while (broadcast_msgs_ > 2 * delivered_msgs_) {
+    // Sleep for 1 milli second(s).
+    util::nanosleep(1000000);
+  }
+  broadcast_msgs_ += 1;
   int id = constructIdentity(msg);
   file_logger_->info("b {}", da::util::stringToInteger(*msg));
   urb_->broadcast(identity_manager_.getValue(id));
@@ -98,6 +106,7 @@ void UniformFIFOReliable::ProcessData::deliver(int sn, int msg_id) {
     LOG("FIFO Reliable Delivered: ", util::stringToBinary(msg));
     fifo_urb_->file_logger_->info("d {} {}", unpackProcessId(*msg),
                                   unpackMessage(*msg));
+    fifo_urb_->delivered_msgs_ += 1;
     next_ += 1;
     pending_messages_.erase(it);
     it = pending_messages_.find(next_);

@@ -25,6 +25,7 @@ namespace {
 std::atomic<bool> can_start{false};
 std::shared_ptr<spdlog::logger> file_logger;
 std::unique_ptr<da::executor::Executor> executor;
+std::unique_ptr<da::executor::Executor> callback_executor;
 std::unique_ptr<da::receiver::Receiver> receiver;
 std::unique_ptr<std::thread> receiver_thread;
 
@@ -34,15 +35,6 @@ void registerUsrHandlers() {
   // positive lambda has been used.
   signal(SIGUSR1, +[](int signum) { can_start = true; });
   signal(SIGUSR2, +[](int signum) { can_start = true; });
-}
-
-void flushAndExit() {
-  if (file_logger != nullptr) {
-    LOG("Flushing the output.");
-    file_logger->flush();
-  }
-  LOG("Exiting.");
-  exit(0);
 }
 
 void exitHandler(int signum) {
@@ -56,13 +48,15 @@ void exitHandler(int signum) {
     LOG("Stopping the receiver.");
     receiver->stop();
   }
-  // Stop the executor thread but allow it to finish tasks that are already
-  // executing.
+  // Stop the executor.
   if (executor != nullptr) {
-    LOG("Adding the flusher task in executor.");
-    executor->add(flushAndExit);
     LOG("Stopping the executor.");
-    executor->waitForCompletion();
+    executor->stop();
+  }
+  // Stop the callback executor.
+  if (callback_executor != nullptr) {
+    LOG("Stopping the callback executor.");
+    callback_executor->stop();
   }
   // Stop the receiver thread.
   if (receiver_thread != nullptr && receiver_thread->joinable()) {
@@ -114,19 +108,13 @@ int main(int argc, char** argv) {
     return 1;
   }
   // Create an in memory logger that will eventually flush to file.
-  int ret =
-      system(std::string("rm -f da_proc_" +
-                         std::to_string(current_process->getId()) + ".out")
-                 .c_str());
-  if (ret) {
-    LOG("Failed to delete the log file.");
-  }
   file_logger = spdlog::basic_logger_mt(
       "basic_logger",
-      "da_proc_" + std::to_string(current_process->getId()) + ".out");
+      "da_proc_" + std::to_string(current_process->getId()) + ".out", true);
   file_logger->set_pattern("%v");
-  // Create executor and a UDP socket for current process.
+  // Create executors and a UDP socket for current process.
   executor = std::make_unique<da::executor::Executor>();
+  callback_executor = std::make_unique<da::executor::Executor>(1);
   // Create a socket with receive timeout of 1000 micro-seconds.
   struct timeval tv;
   tv.tv_sec = 0;
@@ -138,7 +126,7 @@ int main(int argc, char** argv) {
   perfect_links.reserve(processes.size());
   for (const auto& process : processes) {
     perfect_links.emplace_back(std::make_unique<da::link::PerfectLink>(
-        executor.get(), sock.get(), current_process, process.get()));
+        callback_executor.get(), sock.get(), current_process, process.get()));
   }
   // Create a uniform reliable broadcast object.
   auto urb = std::make_unique<da::broadcast::UniformReliable>(
@@ -163,9 +151,6 @@ int main(int argc, char** argv) {
   for (int id = 1; id <= current_process->getMessageCount(); id++) {
     if (!can_start) {
       break;
-    }
-    if (id % 100 == 0) {
-      da::util::nanosleep(10000000);
     }
     const std::string msg = da::util::integerToString(id);
     fifo_urb->broadcast(&msg);

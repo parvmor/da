@@ -41,6 +41,9 @@ class UniformFIFOReliable {
   std::atomic<int> lsn_;
   // Used to log into the file in the required format.
   spdlog::logger* file_logger_;
+  // Keeps track of number of messages delivered and broadcasted.
+  std::atomic<int> delivered_msgs_;
+  std::atomic<int> broadcast_msgs_;
   // Used to assign a unique identity to the messages.
   util::IdentityManager<std::string> identity_manager_;
   class ProcessData;
