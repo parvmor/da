@@ -15,14 +15,15 @@ Executor::Executor(int no_of_threads)
 }
 
 Executor::~Executor() {
-  if (alive_) {
+  if (isAlive()) {
     waitForCompletion();
   }
 }
 
 void Executor::waitForCompletion() {
+  alive_ = false;
+  queue_.stop();
   {
-    alive_ = false;
     std::unique_lock<std::mutex> lock(mutex_);
     cond_var_.notify_all();
   }
@@ -37,29 +38,29 @@ Executor::Worker::Worker(int id, Executor* executor)
     : id_(id), executor_(executor) {}
 
 void Executor::Worker::operator()() {
-  while (executor_->alive_) {
+  while (executor_->isAlive()) {
     Task task;
     {
       std::unique_lock<std::mutex> lock(executor_->mutex_);
       if (executor_->queue_.empty()) {
         executor_->cond_var_.wait(lock, [this] {
-          return !executor_->alive_ || !executor_->queue_.empty();
+          return !executor_->isAlive() || !executor_->queue_.empty();
         });
       }
-      if (!executor_->alive_) {
+      if (!executor_->isAlive()) {
         return;
       }
       if (!executor_->queue_.dequeue(task)) {
         continue;
       }
     }
-    // If task is to be executed in the future enqueue it, sleep for 1
+    // If task is to be executed in the future enqueue it, sleep for 100
     // micro-second and continue.
     // There is no need to wake up another thread since, this thread will
     // execute the task in the next loop.
     if (task.getTime() > std::chrono::high_resolution_clock::now()) {
       executor_->queue_.enqueue(task);
-      util::nanosleep(1000);
+      util::nanosleep(100000);
       continue;
     }
     task();

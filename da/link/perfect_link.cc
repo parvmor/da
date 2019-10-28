@@ -37,14 +37,14 @@ std::string constructInverseMessage(std::string msg, int process_id, bool ack) {
 
 }  // namespace
 
-const int max_length = 256 * sizeof(int);
+const int max_length = 64 * sizeof(int);
 const int min_length = sizeof(int) + sizeof(bool);
 
 PerfectLink::PerfectLink(executor::Executor* executor, socket::UDPSocket* sock,
                          const process::Process* local_process,
                          const process::Process* foreign_process)
     : PerfectLink(executor, sock, local_process, foreign_process,
-                  std::chrono::microseconds(100)) {}
+                  std::chrono::microseconds(10000)) {}
 
 PerfectLink::PerfectLink(executor::Executor* executor, socket::UDPSocket* sock,
                          const process::Process* local_process,

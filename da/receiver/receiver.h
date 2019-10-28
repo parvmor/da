@@ -16,7 +16,7 @@ class Receiver {
   Receiver(executor::Executor* executor, socket::UDPSocket* sock)
       : alive_(true), executor_(executor), sock_(sock) {}
 
-  ~Receiver() { alive_ = false; }
+  ~Receiver() { stop(); }
 
   void stop() { alive_ = false; }
 

@@ -20,8 +20,6 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
 
-#include <iostream>
-
 namespace {
 
 std::atomic<bool> can_start{false};
@@ -30,10 +28,11 @@ std::unique_ptr<da::executor::Executor> executor;
 std::unique_ptr<da::receiver::Receiver> receiver;
 std::unique_ptr<std::thread> receiver_thread;
 
-void registerUsr2Handler() {
-  // Register a function to toggle the can_start when SIGUSR2 is received.
+void registerUsrHandlers() {
+  // Register a function to toggle the can_start when SIGUSR{1,2} is received.
   // NOTE: Lambda and function pointers have different types and hence, a
   // positive lambda has been used.
+  signal(SIGUSR1, +[](int signum) { can_start = true; });
   signal(SIGUSR2, +[](int signum) { can_start = true; });
 }
 
@@ -41,6 +40,8 @@ void exitHandler(int signum) {
   // Reset the handler to default one.
   signal(SIGTERM, SIG_DFL);
   signal(SIGINT, SIG_DFL);
+  // Break from the infitnite broadcasting loop.
+  can_start = false;
   // Stop the receiver.
   if (receiver != nullptr) {
     LOG("Stopping the receiver.");
@@ -76,8 +77,8 @@ void registerTermAndIntHandlers() {
 
 int main(int argc, char** argv) {
   LOG("Initializing...");
-  // Register the SIGUSR2 signal handler.
-  registerUsr2Handler();
+  // Register the SIGUSR{1,2} signal handler.
+  registerUsrHandlers();
   // Register the termination signal handlers.
   registerTermAndIntHandlers();
   // Parse the membership file.
@@ -142,6 +143,9 @@ int main(int argc, char** argv) {
   // Start to broadcast messages.
   LOG("Broadcasting messages...");
   for (int id = 1; id <= current_process->getMessageCount(); id++) {
+    if (!can_start) {
+      break;
+    }
     const std::string msg = da::util::integerToString(id);
     fifo_urb->broadcast(&msg);
   }

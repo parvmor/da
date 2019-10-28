@@ -9,7 +9,7 @@ namespace da {
 namespace receiver {
 
 void Receiver::operator()(broadcast::UniformFIFOReliable* fifo_urb) {
-  while (alive_) {
+  while (isAlive()) {
     auto buffer = std::make_unique<char[]>(link::max_length);
     const auto int_or = sock_->recv(buffer.get(), link::max_length);
     if (!int_or.ok()) {
