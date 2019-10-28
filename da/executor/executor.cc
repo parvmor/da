@@ -37,7 +37,7 @@ Executor::Worker::Worker(int id, Executor* executor)
     : id_(id), executor_(executor) {}
 
 void Executor::Worker::operator()() {
-  while (executor_->alive_ || !executor_->queue_.empty()) {
+  while (executor_->alive_) {
     Task task;
     {
       std::unique_lock<std::mutex> lock(executor_->mutex_);
@@ -45,6 +45,9 @@ void Executor::Worker::operator()() {
         executor_->cond_var_.wait(lock, [this] {
           return !executor_->alive_ || !executor_->queue_.empty();
         });
+      }
+      if (!executor_->alive_) {
+        return;
       }
       if (!executor_->queue_.dequeue(task)) {
         continue;

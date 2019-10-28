@@ -16,6 +16,9 @@ class UDPSocket : public CommunicatingSocket {
 
   UDPSocket(const std::string& localAddress, unsigned short localPort) throw();
 
+  UDPSocket(const std::string& localAddress, unsigned short localPort,
+            struct timeval tv) throw();
+
   // Unset foreign address and port.
   util::Status disconnect();
 
@@ -41,6 +44,7 @@ class UDPSocket : public CommunicatingSocket {
 
  private:
   void setBroadcast();
+  void setTimeout(struct timeval tv);
 };
 
 }  // namespace socket

@@ -24,6 +24,18 @@ UDPSocket::UDPSocket(const std::string &localAddress,
   setBroadcast();
 }
 
+UDPSocket::UDPSocket(const std::string &localAddress, unsigned short localPort,
+                     struct timeval tv) throw()
+    : CommunicatingSocket(SOCK_DGRAM, IPPROTO_UDP) {
+  setLocalAddressAndPort(localAddress, localPort);
+  setBroadcast();
+  setTimeout(tv);
+}
+
+void UDPSocket::setTimeout(struct timeval tv) {
+  setsockopt(sockDesc_, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
+}
+
 void UDPSocket::setBroadcast() {
   // If this fails, we'll hear about it when we try to send. This will allow
   // system that cannot broadcast to continue if they don't plan to broadcast.
