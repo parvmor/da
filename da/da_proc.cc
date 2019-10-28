@@ -70,7 +70,7 @@ void exitHandler(int signum) {
   }
   LOG("Done flushing the output.");
   // Exit the program.
-  exit(0);
+  _exit(0);
 }
 
 void registerTermAndIntHandlers() {

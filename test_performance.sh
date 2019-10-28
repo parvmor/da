@@ -21,7 +21,7 @@ echo "5
 #start 5 processes
 for i in `seq 1 5`
 do
-    ./da_proc $i membership 25000 &
+    ./da_proc $i membership 30000 &
     da_proc_id[$i]=$!
     echo ${da_proc_id[$i]}
 done
