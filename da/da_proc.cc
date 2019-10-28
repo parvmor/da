@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
   }
   // Create an in memory logger that will eventually flush to file.
   int ret =
-      system(std::string("rm -f da_proc" +
+      system(std::string("rm -f da_proc_" +
                          std::to_string(current_process->getId()) + ".out")
                  .c_str());
   if (ret) {
@@ -163,6 +163,9 @@ int main(int argc, char** argv) {
   for (int id = 1; id <= current_process->getMessageCount(); id++) {
     if (!can_start) {
       break;
+    }
+    if (id % 100 == 0) {
+      da::util::nanosleep(10000000);
     }
     const std::string msg = da::util::integerToString(id);
     fifo_urb->broadcast(&msg);
