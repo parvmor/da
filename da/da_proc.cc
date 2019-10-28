@@ -114,6 +114,13 @@ int main(int argc, char** argv) {
     return 1;
   }
   // Create an in memory logger that will eventually flush to file.
+  int ret =
+      system(std::string("rm -f da_proc" +
+                         std::to_string(current_process->getId()) + ".out")
+                 .c_str());
+  if (ret) {
+    LOG("Failed to delete the log file.");
+  }
   file_logger = spdlog::basic_logger_mt(
       "basic_logger",
       "da_proc_" + std::to_string(current_process->getId()) + ".out");

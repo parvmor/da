@@ -54,13 +54,13 @@ void Executor::Worker::operator()() {
         continue;
       }
     }
-    // If task is to be executed in the future enqueue it, sleep for 100
+    // If task is to be executed in the future enqueue it, sleep for 10
     // micro-second and continue.
     // There is no need to wake up another thread since, this thread will
     // execute the task in the next loop.
     if (task.getTime() > std::chrono::high_resolution_clock::now()) {
       executor_->queue_.enqueue(task);
-      util::nanosleep(100000);
+      util::nanosleep(10000);
       continue;
     }
     task();
