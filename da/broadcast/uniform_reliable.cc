@@ -20,7 +20,7 @@ inline int unpackProcessId(const std::string& msg) {
 
 }  // namespace
 
-const int urb_min_length = link::min_length + sizeof(int);
+const int urb_min_length = link::min_length;
 
 UniformReliable::UniformReliable(
     const process::Process* local_process,
@@ -30,7 +30,6 @@ UniformReliable::UniformReliable(
 int UniformReliable::constructIdentity(const std::string* msg) {
   using namespace std::string_literals;
   std::string broadcast_msg = ""s;
-  broadcast_msg += util::integerToString(local_process_->getId());
   broadcast_msg += *msg;
   return identity_manager_.assignId(broadcast_msg);
 }
