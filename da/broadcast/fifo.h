@@ -56,7 +56,7 @@ class UniformFIFOReliable::ProcessData {
 
   void deliver(int sn, int msg_id);
 
-  int getDeliveredMessages() { return delivered_msgs_; }
+  int getDeliveredMessages() const;
 
  private:
   UniformFIFOReliable* fifo_urb_;

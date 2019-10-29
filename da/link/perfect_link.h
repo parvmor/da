@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include <da/executor/executor.h>
+#include <da/executor/scheduler.h>
 #include <da/process/process.h>
 #include <da/socket/udp_socket.h>
 #include <da/util/identity_manager.h>
@@ -24,11 +24,11 @@ extern const int min_length;
 
 class PerfectLink {
  public:
-  PerfectLink(executor::Executor* executor, socket::UDPSocket* sock,
+  PerfectLink(executor::Scheduler* scheduler, socket::UDPSocket* sock,
               const process::Process* local_process,
               const process::Process* foreign_process);
 
-  PerfectLink(executor::Executor*, socket::UDPSocket* sock,
+  PerfectLink(executor::Scheduler* scheduler, socket::UDPSocket* sock,
               const process::Process* local_process,
               const process::Process* foreign_process,
               std::chrono::microseconds interval);
@@ -52,7 +52,7 @@ class PerfectLink {
   // Constructs and returns a unique identity for the given message.
   int constructIdentity(const std::string* msg);
 
-  executor::Executor* executor_;
+  executor::Scheduler* scheduler_;
   socket::UDPSocket* sock_;
   const process::Process* local_process_;
   const process::Process* foreign_process_;

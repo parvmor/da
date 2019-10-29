@@ -10,6 +10,7 @@
 
 #include <da/broadcast/uniform_reliable.h>
 #include <da/executor/executor.h>
+#include <da/executor/scheduler.h>
 #include <da/init/parser.h>
 #include <da/link/perfect_link.h>
 #include <da/receiver/receiver.h>
@@ -25,7 +26,7 @@ namespace {
 std::atomic<bool> can_start{false};
 std::shared_ptr<spdlog::logger> file_logger;
 std::unique_ptr<da::executor::Executor> executor;
-std::unique_ptr<da::executor::Executor> callback_executor;
+std::unique_ptr<da::executor::Scheduler> scheduler;
 std::unique_ptr<da::receiver::Receiver> receiver;
 std::unique_ptr<std::thread> receiver_thread;
 std::unique_ptr<da::socket::UDPSocket> sock;
@@ -56,10 +57,10 @@ void exitHandler(int signum) {
     LOG("Stopping the executor.");
     executor->stop();
   }
-  // Stop the callback executor.
-  if (callback_executor != nullptr) {
-    LOG("Stopping the callback executor.");
-    callback_executor->stop();
+  // Stop the scheduler.
+  if (scheduler != nullptr) {
+    LOG("Stopping the scheduler.");
+    scheduler->stop();
   }
   // Stop the receiver thread.
   if (receiver_thread != nullptr && receiver_thread->joinable()) {
@@ -122,7 +123,7 @@ int main(int argc, char** argv) {
   int num_threads = std::thread::hardware_concurrency() * 5;
   executor = std::make_unique<da::executor::Executor>(
       (num_threads + processes.size() - 1) / (processes.size()));
-  callback_executor = std::make_unique<da::executor::Executor>(1);
+  scheduler = std::make_unique<da::executor::Scheduler>(1);
   // Create a socket with receive timeout of 1000 micro-seconds.
   struct timeval tv;
   tv.tv_sec = 1;
@@ -134,7 +135,7 @@ int main(int argc, char** argv) {
   perfect_links.reserve(processes.size());
   for (const auto& process : processes) {
     perfect_links.emplace_back(std::make_unique<da::link::PerfectLink>(
-        callback_executor.get(), sock.get(), current_process, process.get()));
+        scheduler.get(), sock.get(), current_process, process.get()));
   }
   // Create a uniform reliable broadcast object.
   auto urb = std::make_unique<da::broadcast::UniformReliable>(

@@ -8,7 +8,7 @@
 #include <sstream>
 #include <string>
 
-#include <da/executor/executor.h>
+#include <da/executor/scheduler.h>
 #include <da/process/process.h>
 #include <da/socket/udp_socket.h>
 #include <da/util/logging.h>
@@ -40,17 +40,19 @@ std::string constructInverseMessage(std::string msg, int process_id, bool ack) {
 const int max_length = 64 * sizeof(int);
 const int min_length = sizeof(int) + sizeof(bool);
 
-PerfectLink::PerfectLink(executor::Executor* executor, socket::UDPSocket* sock,
+PerfectLink::PerfectLink(executor::Scheduler* scheduler,
+                         socket::UDPSocket* sock,
                          const process::Process* local_process,
                          const process::Process* foreign_process)
-    : PerfectLink(executor, sock, local_process, foreign_process,
+    : PerfectLink(scheduler, sock, local_process, foreign_process,
                   std::chrono::microseconds(2000000)) {}
 
-PerfectLink::PerfectLink(executor::Executor* executor, socket::UDPSocket* sock,
+PerfectLink::PerfectLink(executor::Scheduler* scheduler,
+                         socket::UDPSocket* sock,
                          const process::Process* local_process,
                          const process::Process* foreign_process,
                          std::chrono::microseconds interval)
-    : executor_(executor),
+    : scheduler_(scheduler),
       sock_(sock),
       local_process_(local_process),
       foreign_process_(foreign_process),
@@ -97,8 +99,8 @@ void PerfectLink::sendMessageCallback(int id) {
     LOG("Sending of message '", util::stringToBinary(msg), "' to ",
         *foreign_process_, " failed. Status: ", status);
   }
-  executor_->schedule(interval_,
-                      std::bind(&PerfectLink::sendMessageCallback, this, id));
+  scheduler_->schedule(interval_,
+                       std::bind(&PerfectLink::sendMessageCallback, this, id));
 }
 
 void PerfectLink::ackMessage(const std::string& msg) {

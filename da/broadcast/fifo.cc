@@ -69,7 +69,7 @@ void UniformFIFOReliable::broadcast(const std::string* msg) {
   while (
       broadcast_msgs_ -
           process_data_[local_process_->getId() - 1]->getDeliveredMessages() >
-      10000) {
+      15000) {
     // Sleep for 1 milli second(s).
     util::nanosleep(1000000);
   }
@@ -99,6 +99,10 @@ bool UniformFIFOReliable::deliver(const std::string& msg) {
 
 UniformFIFOReliable::ProcessData::ProcessData(UniformFIFOReliable* fifo_urb)
     : fifo_urb_(fifo_urb), next_(0) {}
+
+int UniformFIFOReliable::ProcessData::getDeliveredMessages() const {
+  return delivered_msgs_;
+}
 
 void UniformFIFOReliable::ProcessData::deliver(int sn, int msg_id) {
   std::unique_lock<std::mutex> lock(mutex_);
