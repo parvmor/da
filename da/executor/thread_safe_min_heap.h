@@ -1,5 +1,5 @@
-#ifndef __INCLUDED_DA_EXECUTOR_THREAD_SAFE_QUEUE_H_
-#define __INCLUDED_DA_EXECUTOR_THREAD_SAFE_QUEUE_H_
+#ifndef __INCLUDED_DA_EXECUTOR_THREAD_SAFE_MIN_HEAP_H_
+#define __INCLUDED_DA_EXECUTOR_THREAD_SAFE_MIN_HEAP_H_
 
 #include <atomic>
 #include <mutex>
@@ -10,10 +10,10 @@ namespace da {
 namespace executor {
 
 template <typename T>
-class ThreadSafeQueue {
+class ThreadSafeMinHeap {
  public:
-  ThreadSafeQueue() : alive_(true) {}
-  ~ThreadSafeQueue() {}
+  ThreadSafeMinHeap() : alive_(true) {}
+  ~ThreadSafeMinHeap() {}
 
   bool empty() {
     if (!alive_) {
@@ -26,7 +26,7 @@ class ThreadSafeQueue {
   void stop() {
     alive_ = false;
     std::unique_lock<std::mutex> lock(mutex_);
-    queue_ = std::queue<T>();
+    queue_ = std::priority_queue<T, std::vector<T>, std::greater<T>>();
   }
 
   int size() {
@@ -50,7 +50,7 @@ class ThreadSafeQueue {
     if (queue_.empty()) {
       return false;
     }
-    t = std::move(queue_.front());
+    t = std::move(queue_.top());
     queue_.pop();
     return true;
   }
@@ -58,10 +58,10 @@ class ThreadSafeQueue {
  private:
   std::mutex mutex_;
   std::atomic<bool> alive_;
-  std::queue<T> queue_;
+  std::priority_queue<T, std::vector<T>, std::greater<T>> queue_;
 };
 
 }  // namespace executor
 }  // namespace da
 
-#endif  // __INCLUDED_DA_EXECUTOR_THREAD_SAFE_QUEUE_H_
+#endif  // __INCLUDED_DA_EXECUTOR_THREAD_SAFE_MIN_HEAP_H_

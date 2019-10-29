@@ -31,7 +31,7 @@ bin: da_proc
 run: all
 	./da_proc ${PROCESS} membership ${MESSAGES}
 
-da_proc: % : $(SRC)/%.cc util/status process/process init/parser socket/udp_socket executor/executor link/perfect_link receiver/receiver broadcast/uniform_reliable broadcast/fifo
+da_proc: % : $(SRC)/%.cc util/status process/process init/parser socket/udp_socket executor/executor executor/scheduler link/perfect_link receiver/receiver broadcast/uniform_reliable broadcast/fifo
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
@@ -56,12 +56,17 @@ broadcast/fifo: % : $(SRC)/%.cc process/process link/perfect_link broadcast/unif
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
 
-link/perfect_link: % : $(SRC)/%.cc util/status process/process socket/udp_socket executor/executor util/util
+link/perfect_link: % : $(SRC)/%.cc util/status process/process socket/udp_socket executor/scheduler util/util
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
 
 executor/executor: % : $(SRC)/%.cc
+	mkdir -p $(shell dirname $(BUILD)/$@.o)
+	$(CC) -c -o $(BUILD)/$@.o $<
+	$(eval OBJS += $(BUILD)/$@.o)
+
+executor/scheduler: % : $(SRC)/%.cc
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)

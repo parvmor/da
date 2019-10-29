@@ -39,7 +39,7 @@ Executor::Worker::Worker(int id, Executor* executor)
 
 void Executor::Worker::operator()() {
   while (executor_->isAlive()) {
-    Task task;
+    std::function<void()> f;
     {
       std::unique_lock<std::mutex> lock(executor_->mutex_);
       if (executor_->queue_.empty()) {
@@ -50,50 +50,13 @@ void Executor::Worker::operator()() {
       if (!executor_->isAlive()) {
         return;
       }
-      if (!executor_->queue_.dequeue(task)) {
+      if (!executor_->queue_.dequeue(f)) {
         continue;
       }
     }
-    // If task is to be executed in the future enqueue it, sleep for 10
-    // micro-second and continue.
-    // There is no need to wake up another thread since, this thread will
-    // execute the task in the next loop.
-    if (task.getTime() > std::chrono::high_resolution_clock::now()) {
-      executor_->queue_.enqueue(task);
-      util::nanosleep(10000);
-      continue;
-    }
-    task();
+    f();
   }
 }
 
-Executor::Task::Task()
-    : f_(nullptr),
-      time_(std::chrono::time_point<std::chrono::high_resolution_clock>()) {}
-
-Executor::Task::Task(
-    const std::function<void()>& f,
-    std::chrono::time_point<std::chrono::high_resolution_clock> time)
-    : f_(f), time_(time) {}
-
-bool Executor::Task::operator<(const Executor::Task& task) const {
-  return this->time_ < task.getTime();
-}
-
-bool Executor::Task::operator>(const Executor::Task& task) const {
-  return this->time_ > task.getTime();
-}
-
-std::chrono::time_point<std::chrono::high_resolution_clock>
-Executor::Task::getTime() const {
-  return time_;
-}
-
-void Executor::Task::operator()() {
-  if (f_ == nullptr) {
-    return;
-  }
-  f_();
-}
 }  // namespace executor
 }  // namespace da

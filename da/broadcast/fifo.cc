@@ -66,7 +66,7 @@ bool UniformFIFOReliable::deliverToURB(const std::string& msg) {
 
 void UniformFIFOReliable::broadcast(const std::string* msg) {
   // Wait until we have seen a considerable amount of delivered messages.
-  while (broadcast_msgs_ > 5 * delivered_msgs_) {
+  while (broadcast_msgs_ > 10 * delivered_msgs_) {
     // Sleep for 1 milli second(s).
     util::nanosleep(1000000);
   }
