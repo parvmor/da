@@ -119,7 +119,9 @@ int main(int argc, char** argv) {
       "da_proc_" + std::to_string(current_process->getId()) + ".out", true);
   file_logger->set_pattern("%v");
   // Create executors and a UDP socket for current process.
-  executor = std::make_unique<da::executor::Executor>();
+  int num_threads = std::thread::hardware_concurrency() * 5;
+  executor = std::make_unique<da::executor::Executor>(
+      (num_threads + processes.size() - 1) / (processes.size()));
   scheduler = std::make_unique<da::executor::Scheduler>(1);
   // Create a socket with receive timeout of 1000 micro-seconds.
   struct timeval tv;
