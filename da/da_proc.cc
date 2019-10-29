@@ -122,8 +122,8 @@ int main(int argc, char** argv) {
   scheduler = std::make_unique<da::executor::Scheduler>(1);
   // Create a socket with receive timeout of 1000 micro-seconds.
   struct timeval tv;
-  tv.tv_sec = 0;
-  tv.tv_usec = 1000;
+  tv.tv_sec = 1;
+  tv.tv_usec = 0;
   sock = std::make_unique<da::socket::UDPSocket>(
       current_process->getIPAddr(), current_process->getPort(), tv);
   // Create a list of perfect links to all the processes.
