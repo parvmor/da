@@ -34,8 +34,10 @@ void registerUsrHandlers() {
   // Register a function to toggle the can_start when SIGUSR{1,2} is received.
   // NOTE: Lambda and function pointers have different types and hence, a
   // positive lambda has been used.
-  signal(SIGUSR1, +[](int signum) { can_start = true; });
-  signal(SIGUSR2, +[](int signum) { can_start = true; });
+  signal(
+      SIGUSR1, +[](int signum) { can_start = true; });
+  signal(
+      SIGUSR2, +[](int signum) { can_start = true; });
 }
 
 void exitHandler(int signum) {
@@ -117,12 +119,14 @@ int main(int argc, char** argv) {
       "da_proc_" + std::to_string(current_process->getId()) + ".out", true);
   file_logger->set_pattern("%v");
   // Create executors and a UDP socket for current process.
-  executor = std::make_unique<da::executor::Executor>();
+  int num_threads = std::thread::hardware_concurrency() * 5;
+  executor = std::make_unique<da::executor::Executor>(
+      (num_threads + processes.size() - 1) / (processes.size()));
   callback_executor = std::make_unique<da::executor::Executor>(1);
   // Create a socket with receive timeout of 1000 micro-seconds.
   struct timeval tv;
-  tv.tv_sec = 0;
-  tv.tv_usec = 1000;
+  tv.tv_sec = 1;
+  tv.tv_usec = 0;
   sock = std::make_unique<da::socket::UDPSocket>(
       current_process->getIPAddr(), current_process->getPort(), tv);
   // Create a list of perfect links to all the processes.

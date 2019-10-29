@@ -15,7 +15,7 @@ init_time=2
 
 # configure lossy network simulation
 sudo tc qdisc add dev lo root netem 2>/dev/null
-sudo tc qdisc change dev lo root netem delay 50ms 200ms loss 10% 25% reorder 25% 50%
+# sudo tc qdisc change dev lo root netem delay 50ms 200ms loss 10% 25% reorder 25% 50%
 
 # create default Makefile if not existing
 if [ ! -f Makefile ]; then

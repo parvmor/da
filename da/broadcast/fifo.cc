@@ -66,7 +66,10 @@ bool UniformFIFOReliable::deliverToURB(const std::string& msg) {
 
 void UniformFIFOReliable::broadcast(const std::string* msg) {
   // Wait until we have seen a considerable amount of delivered messages.
-  while (broadcast_msgs_ > 5 * delivered_msgs_) {
+  while (
+      broadcast_msgs_ -
+          process_data_[local_process_->getId() - 1]->getDeliveredMessages() >
+      10000) {
     // Sleep for 1 milli second(s).
     util::nanosleep(1000000);
   }
@@ -107,6 +110,7 @@ void UniformFIFOReliable::ProcessData::deliver(int sn, int msg_id) {
     fifo_urb_->file_logger_->info("d {} {}", unpackProcessId(*msg),
                                   unpackMessage(*msg));
     fifo_urb_->delivered_msgs_ += 1;
+    delivered_msgs_ += 1;
     next_ += 1;
     pending_messages_.erase(it);
     it = pending_messages_.find(next_);
