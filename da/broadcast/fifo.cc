@@ -69,7 +69,7 @@ void UniformFIFOReliable::broadcast(const std::string* msg) {
   while (
       broadcast_msgs_ -
           process_data_[local_process_->getId() - 1]->getDeliveredMessages() >
-      15000) {
+      17500) {
     // Sleep for 1 milli second(s).
     util::nanosleep(1000000);
   }

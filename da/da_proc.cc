@@ -75,6 +75,7 @@ void exitHandler(int signum) {
     sock->disconnect();
   }
   // Exit the program.
+  std::cerr << "Exiting the program..." << std::endl;
   _exit(0);
 }
 
