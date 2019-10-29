@@ -28,6 +28,7 @@ std::unique_ptr<da::executor::Executor> executor;
 std::unique_ptr<da::executor::Executor> callback_executor;
 std::unique_ptr<da::receiver::Receiver> receiver;
 std::unique_ptr<std::thread> receiver_thread;
+std::unique_ptr<da::socket::UDPSocket> sock;
 
 void registerUsrHandlers() {
   // Register a function to toggle the can_start when SIGUSR{1,2} is received.
@@ -69,6 +70,9 @@ void exitHandler(int signum) {
     file_logger->flush();
   }
   LOG("Done flushing the output.");
+  if (sock != nullptr) {
+    sock->disconnect();
+  }
   // Exit the program.
   _exit(0);
 }
@@ -119,7 +123,7 @@ int main(int argc, char** argv) {
   struct timeval tv;
   tv.tv_sec = 0;
   tv.tv_usec = 1000;
-  auto sock = std::make_unique<da::socket::UDPSocket>(
+  sock = std::make_unique<da::socket::UDPSocket>(
       current_process->getIPAddr(), current_process->getPort(), tv);
   // Create a list of perfect links to all the processes.
   std::vector<std::unique_ptr<da::link::PerfectLink>> perfect_links;

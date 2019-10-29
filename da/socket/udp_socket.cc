@@ -27,7 +27,10 @@ UDPSocket::UDPSocket(const std::string &localAddress,
 UDPSocket::UDPSocket(const std::string &localAddress, unsigned short localPort,
                      struct timeval tv) throw()
     : CommunicatingSocket(SOCK_DGRAM, IPPROTO_UDP) {
-  setLocalAddressAndPort(localAddress, localPort);
+  const auto status = setLocalAddressAndPort(localAddress, localPort);
+  if (!status.ok()) {
+    throw util::RuntimeStatusError(status);
+  }
   setBroadcast();
   setTimeout(tv);
 }
