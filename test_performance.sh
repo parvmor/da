@@ -18,13 +18,16 @@ echo "5
 4 127.0.0.1 11004
 5 127.0.0.1 11005" > membership
 
+for i in `seq 1 10`
+do
 #start 5 processes
 for i in `seq 1 5`
 do
-    ./da_proc $i membership 300000 &
+    ./da_proc $i membership 30000 &
     da_proc_id[$i]=$!
     echo ${da_proc_id[$i]}
 done
+
 
 #leave some time for process initialization
 sleep ${init_time}
@@ -57,6 +60,7 @@ do
 	wait "${da_proc_id[$i]}"
 done
 
+done
 #count delivered messages in the logs
 #... (not implemented here)
 

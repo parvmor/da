@@ -1,12 +1,11 @@
 #include <da/broadcast/fifo.h>
-
-#include <memory>
-#include <string>
-
 #include <da/broadcast/uniform_reliable.h>
 #include <da/process/process.h>
 #include <da/util/logging.h>
 #include <da/util/util.h>
+
+#include <memory>
+#include <string>
 
 namespace da {
 namespace broadcast {

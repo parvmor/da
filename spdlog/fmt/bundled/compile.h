@@ -9,6 +9,7 @@
 #define FMT_COMPILE_H_
 
 #include <vector>
+
 #include "format.h"
 
 FMT_BEGIN_NAMESPACE

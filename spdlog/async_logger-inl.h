@@ -7,11 +7,11 @@
 #include "spdlog/async_logger.h"
 #endif
 
-#include "spdlog/details/thread_pool.h"
-#include "spdlog/sinks/sink.h"
-
 #include <memory>
 #include <string>
+
+#include "spdlog/details/thread_pool.h"
+#include "spdlog/sinks/sink.h"
 
 SPDLOG_INLINE spdlog::async_logger::async_logger(
     std::string logger_name, sinks_init_list sinks_list,

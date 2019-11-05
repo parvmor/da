@@ -1,6 +1,10 @@
 #ifndef __INCLUDED_DA_BROADCAST_UNIFORM_RELIABLE_H_
 #define __INCLUDED_DA_BROADCAST_UNIFORM_RELIABLE_H_
 
+#include <da/link/perfect_link.h>
+#include <da/process/process.h>
+#include <da/util/identity_manager.h>
+
 #include <atomic>
 #include <memory>
 #include <mutex>
@@ -8,10 +12,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
-#include <da/link/perfect_link.h>
-#include <da/process/process.h>
-#include <da/util/identity_manager.h>
 
 namespace da {
 namespace broadcast {

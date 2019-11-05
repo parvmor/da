@@ -1,4 +1,11 @@
+#include <da/executor/scheduler.h>
 #include <da/link/perfect_link.h>
+#include <da/process/process.h>
+#include <da/socket/udp_socket.h>
+#include <da/util/logging.h>
+#include <da/util/status.h>
+#include <da/util/statusor.h>
+#include <da/util/util.h>
 
 #include <chrono>
 #include <cstring>
@@ -7,14 +14,6 @@
 #include <shared_mutex>
 #include <sstream>
 #include <string>
-
-#include <da/executor/scheduler.h>
-#include <da/process/process.h>
-#include <da/socket/udp_socket.h>
-#include <da/util/logging.h>
-#include <da/util/status.h>
-#include <da/util/statusor.h>
-#include <da/util/util.h>
 
 namespace da {
 namespace link {

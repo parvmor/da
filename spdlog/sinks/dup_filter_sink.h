@@ -3,13 +3,13 @@
 
 #pragma once
 
-#include "dist_sink.h"
-#include "spdlog/details/log_msg.h"
-#include "spdlog/details/null_mutex.h"
-
 #include <chrono>
 #include <mutex>
 #include <string>
+
+#include "dist_sink.h"
+#include "spdlog/details/log_msg.h"
+#include "spdlog/details/null_mutex.h"
 
 // Duplicate message removal sink.
 // Skip the message if previous one is identical and less than

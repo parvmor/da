@@ -8,14 +8,14 @@
 // spdlog_ex exception. If user requests a non existing logger, nullptr will be
 // returned This class is thread safe
 
-#include "spdlog/common.h"
-
 #include <chrono>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
+
+#include "spdlog/common.h"
 
 namespace spdlog {
 class logger;

@@ -1,17 +1,17 @@
 #ifndef __INCLUDED_DA_BROADCAST_FIFO_H_
 #define __INCLUDED_DA_BROADCAST_FIFO_H_
 
-#include <atomic>
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <vector>
-
 #include <da/broadcast/uniform_reliable.h>
 #include <da/process/process.h>
 #include <da/util/util.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
+
+#include <atomic>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace da {
 namespace broadcast {

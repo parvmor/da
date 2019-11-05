@@ -1,8 +1,6 @@
-#include <da/socket/udp_socket.h>
-
-#include <errno.h>
-
 #include <da/socket/communicating_socket.h>
+#include <da/socket/udp_socket.h>
+#include <errno.h>
 
 namespace da {
 namespace socket {

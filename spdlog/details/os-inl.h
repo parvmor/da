@@ -7,10 +7,9 @@
 #include "spdlog/details/os.h"
 #endif
 
-#include "spdlog/common.h"
-
 #include <sys/stat.h>
 #include <sys/types.h>
+
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -20,6 +19,8 @@
 #include <ctime>
 #include <string>
 #include <thread>
+
+#include "spdlog/common.h"
 
 #ifdef _WIN32
 

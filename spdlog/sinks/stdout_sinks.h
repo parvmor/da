@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdio>
+
 #include "spdlog/details/console_globals.h"
 #include "spdlog/details/synchronous_factory.h"
 #include "spdlog/sinks/sink.h"

@@ -3,9 +3,6 @@
 
 #pragma once
 
-#include "spdlog/details/null_mutex.h"
-#include "spdlog/tweakme.h"
-
 #include <atomic>
 #include <chrono>
 #include <exception>
@@ -14,6 +11,9 @@
 #include <memory>
 #include <string>
 #include <type_traits>
+
+#include "spdlog/details/null_mutex.h"
+#include "spdlog/tweakme.h"
 
 #ifdef _WIN32
 #ifndef NOMINMAX

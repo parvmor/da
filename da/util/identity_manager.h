@@ -2,6 +2,7 @@
 #define __INCLUDED_DA_UTIL_IDENTITY_MANAGER_H_
 
 #include <mutex>
+#include <shared_mutex>
 #include <unordered_map>
 #include <vector>
 

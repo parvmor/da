@@ -1,13 +1,3 @@
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <atomic>
-#include <cassert>
-#include <functional>
-#include <memory>
-#include <thread>
-
 #include <da/broadcast/uniform_reliable.h>
 #include <da/executor/executor.h>
 #include <da/executor/scheduler.h>
@@ -18,8 +8,18 @@
 #include <da/util/logging.h>
 #include <da/util/statusor.h>
 #include <da/util/util.h>
+#include <signal.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#include <atomic>
+#include <cassert>
+#include <functional>
+#include <memory>
+#include <thread>
 
 namespace {
 
@@ -35,14 +35,17 @@ void registerUsrHandlers() {
   // Register a function to toggle the can_start when SIGUSR{1,2} is received.
   // NOTE: Lambda and function pointers have different types and hence, a
   // positive lambda has been used.
-  signal(SIGUSR1, +[](int signum) { can_start = true; });
-  signal(SIGUSR2, +[](int signum) { can_start = true; });
+  signal(
+      SIGUSR1, +[](int signum) { can_start = true; });
+  signal(
+      SIGUSR2, +[](int signum) { can_start = true; });
 }
 
 void exitHandler(int signum) {
   // Reset the handler to default one.
   signal(SIGTERM, SIG_DFL);
   signal(SIGINT, SIG_DFL);
+
   // Break from the infitnite broadcasting loop.
   can_start = false;
   // Stop the receiver.
@@ -54,6 +57,8 @@ void exitHandler(int signum) {
   if (executor != nullptr) {
     LOG("Stopping the executor.");
     executor->stop();
+  } else {
+    std::cout << "Why is there no executor to stop" << std::endl;
   }
   // Stop the scheduler.
   if (scheduler != nullptr) {

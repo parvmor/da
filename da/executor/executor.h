@@ -1,15 +1,16 @@
 #ifndef __INCLUDED_DA_EXECUTOR_EXECUTOR_H_
 #define __INCLUDED_DA_EXECUTOR_EXECUTOR_H_
 
+#include <da/executor/thread_safe_queue.h>
+
 #include <atomic>
 #include <functional>
 #include <future>
+#include <iostream>
 #include <mutex>
 #include <thread>
 #include <utility>
 #include <vector>
-
-#include <da/executor/thread_safe_queue.h>
 
 namespace da {
 namespace executor {
@@ -34,6 +35,7 @@ class Executor {
   bool isAlive() const { return alive_; }
 
   void stop() {
+    std::cerr << "------Stopping executor-------" << std::endl;
     alive_ = false;
     queue_.stop();
   }

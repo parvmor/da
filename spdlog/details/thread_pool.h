@@ -3,15 +3,15 @@
 
 #pragma once
 
-#include "spdlog/details/log_msg_buffer.h"
-#include "spdlog/details/mpmc_blocking_q.h"
-#include "spdlog/details/os.h"
-
 #include <chrono>
 #include <functional>
 #include <memory>
 #include <thread>
 #include <vector>
+
+#include "spdlog/details/log_msg_buffer.h"
+#include "spdlog/details/mpmc_blocking_q.h"
+#include "spdlog/details/os.h"
 
 namespace spdlog {
 class async_logger;

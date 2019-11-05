@@ -1,6 +1,13 @@
 #ifndef __INCLUDED_DA_LINK_PERFECT_LINK_H_
 #define __INCLUDED_DA_LINK_PERFECT_LINK_H_
 
+#include <da/executor/scheduler.h>
+#include <da/process/process.h>
+#include <da/socket/udp_socket.h>
+#include <da/util/identity_manager.h>
+#include <da/util/status.h>
+#include <da/util/statusor.h>
+
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -8,13 +15,6 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-
-#include <da/executor/scheduler.h>
-#include <da/process/process.h>
-#include <da/socket/udp_socket.h>
-#include <da/util/identity_manager.h>
-#include <da/util/status.h>
-#include <da/util/statusor.h>
 
 namespace da {
 namespace link {

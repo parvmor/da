@@ -8,6 +8,7 @@
 #endif
 
 #include <memory>
+
 #include "spdlog/details/console_globals.h"
 #include "spdlog/details/pattern_formatter.h"
 

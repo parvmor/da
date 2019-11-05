@@ -15,11 +15,11 @@
 #ifndef __INCLUDED_DA_UTIL_STATUSOR_H_
 #define __INCLUDED_DA_UTIL_STATUSOR_H_
 
+#include <da/util/status.h>
+
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
-
-#include <da/util/status.h>
 
 namespace da {
 namespace util {

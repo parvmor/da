@@ -4,6 +4,7 @@
 #pragma once
 
 #include <string>
+
 #include "spdlog/common.h"
 
 namespace spdlog {

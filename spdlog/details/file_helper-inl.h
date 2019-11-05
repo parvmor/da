@@ -7,15 +7,15 @@
 #include "spdlog/details/file_helper.h"
 #endif
 
-#include "spdlog/common.h"
-#include "spdlog/details/os.h"
-
 #include <cerrno>
 #include <chrono>
 #include <cstdio>
 #include <string>
 #include <thread>
 #include <tuple>
+
+#include "spdlog/common.h"
+#include "spdlog/details/os.h"
 
 namespace spdlog {
 namespace details {

@@ -7,12 +7,6 @@
 #include "spdlog/details/pattern_formatter.h"
 #endif
 
-#include "spdlog/details/fmt_helper.h"
-#include "spdlog/details/log_msg.h"
-#include "spdlog/details/os.h"
-#include "spdlog/fmt/fmt.h"
-#include "spdlog/formatter.h"
-
 #include <array>
 #include <cctype>
 #include <chrono>
@@ -24,6 +18,12 @@
 #include <thread>
 #include <utility>
 #include <vector>
+
+#include "spdlog/details/fmt_helper.h"
+#include "spdlog/details/log_msg.h"
+#include "spdlog/details/os.h"
+#include "spdlog/fmt/fmt.h"
+#include "spdlog/formatter.h"
 
 namespace spdlog {
 namespace details {

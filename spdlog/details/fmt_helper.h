@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <type_traits>
+
 #include "spdlog/common.h"
 #include "spdlog/fmt/fmt.h"
 

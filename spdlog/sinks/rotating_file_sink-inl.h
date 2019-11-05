@@ -7,18 +7,17 @@
 #include "spdlog/sinks/rotating_file_sink.h"
 #endif
 
-#include "spdlog/common.h"
-
-#include "spdlog/details/file_helper.h"
-#include "spdlog/details/null_mutex.h"
-#include "spdlog/fmt/fmt.h"
-
 #include <cerrno>
 #include <chrono>
 #include <ctime>
 #include <mutex>
 #include <string>
 #include <tuple>
+
+#include "spdlog/common.h"
+#include "spdlog/details/file_helper.h"
+#include "spdlog/details/null_mutex.h"
+#include "spdlog/fmt/fmt.h"
 
 namespace spdlog {
 namespace sinks {

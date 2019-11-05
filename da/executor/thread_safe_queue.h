@@ -2,6 +2,7 @@
 #define __INCLUDED_DA_EXECUTOR_THREAD_SAFE_QUEUE_H_
 
 #include <atomic>
+#include <iostream>
 #include <mutex>
 #include <queue>
 #include <vector>
@@ -25,8 +26,13 @@ class ThreadSafeQueue {
 
   void stop() {
     alive_ = false;
+    std::cout << "Stopping queue of size" << queue_.size() << std::endl;
     std::unique_lock<std::mutex> lock(mutex_);
-    queue_ = std::queue<T>();
+    std::cout << "Lock aquired" << std::endl;
+    std::queue<T> empty = std::queue<T>(); //Point of failure??
+    std::cout << "Empty queue created" << std::endl;
+    std::swap(queue_,empty);
+    std::cout << "Queue stopped" << std::endl;
   }
 
   int size() {

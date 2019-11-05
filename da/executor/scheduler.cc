@@ -1,5 +1,4 @@
 #include <da/executor/scheduler.h>
-
 #include <da/util/util.h>
 
 namespace da {

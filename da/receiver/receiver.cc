@@ -1,9 +1,8 @@
 #include <da/receiver/receiver.h>
+#include <da/util/logging.h>
 
 #include <memory>
 #include <string>
-
-#include <da/util/logging.h>
 
 namespace da {
 namespace receiver {

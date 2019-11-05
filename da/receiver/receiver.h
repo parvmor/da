@@ -1,12 +1,12 @@
 #ifndef __INCLUDED_DA_RECEIVER_RECEIVER_H_
 #define __INCLUDED_DA_RECEIVER_RECEIVER_H_
 
-#include <atomic>
-
 #include <da/broadcast/fifo.h>
 #include <da/executor/executor.h>
 #include <da/link/perfect_link.h>
 #include <da/socket/udp_socket.h>
+
+#include <atomic>
 
 namespace da {
 namespace receiver {

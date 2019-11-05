@@ -1,6 +1,8 @@
 #ifndef __INCLUDED_DA_EXECUTOR_SCHEDULER_H_
 #define __INCLUDED_DA_EXECUTOR_SCHEDULER_H_
 
+#include <da/executor/thread_safe_min_heap.h>
+
 #include <atomic>
 #include <chrono>
 #include <functional>
@@ -9,8 +11,6 @@
 #include <thread>
 #include <utility>
 #include <vector>
-
-#include <da/executor/thread_safe_min_heap.h>
 
 namespace da {
 namespace executor {

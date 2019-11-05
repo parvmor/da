@@ -8,8 +8,6 @@
 #ifndef FMT_FORMAT_INL_H_
 #define FMT_FORMAT_INL_H_
 
-#include "format.h"
-
 #include <string.h>
 
 #include <cctype>
@@ -20,6 +18,8 @@
 #include <cstddef>  // for std::ptrdiff_t
 #include <cstring>  // for std::memmove
 #include <cwchar>
+
+#include "format.h"
 #if !defined(FMT_STATIC_THOUSANDS_SEPARATOR)
 #include <locale>
 #endif

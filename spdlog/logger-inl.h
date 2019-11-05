@@ -7,11 +7,11 @@
 #include "spdlog/logger.h"
 #endif
 
+#include <cstdio>
+
 #include "spdlog/details/backtracer.h"
 #include "spdlog/details/pattern_formatter.h"
 #include "spdlog/sinks/sink.h"
-
-#include <cstdio>
 
 namespace spdlog {
 

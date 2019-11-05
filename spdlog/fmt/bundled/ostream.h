@@ -9,6 +9,7 @@
 #define FMT_OSTREAM_H_
 
 #include <ostream>
+
 #include "format.h"
 
 FMT_BEGIN_NAMESPACE

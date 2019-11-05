@@ -8,13 +8,13 @@
 #ifndef FMT_CHRONO_H_
 #define FMT_CHRONO_H_
 
-#include "format.h"
-#include "locale.h"
-
 #include <chrono>
 #include <ctime>
 #include <locale>
 #include <sstream>
+
+#include "format.h"
+#include "locale.h"
 
 // enable safe chrono durations, unless explicitly disabled
 #ifndef FMT_SAFE_DURATION_CAST

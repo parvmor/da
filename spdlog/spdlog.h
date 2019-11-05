@@ -9,16 +9,16 @@
 
 #pragma once
 
+#include <chrono>
+#include <functional>
+#include <memory>
+#include <string>
+
 #include "spdlog/common.h"
 #include "spdlog/details/registry.h"
 #include "spdlog/details/synchronous_factory.h"
 #include "spdlog/logger.h"
 #include "spdlog/version.h"
-
-#include <chrono>
-#include <functional>
-#include <memory>
-#include <string>
 
 namespace spdlog {
 

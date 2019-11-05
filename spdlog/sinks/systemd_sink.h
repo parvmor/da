@@ -3,12 +3,13 @@
 
 #pragma once
 
+#include <systemd/sd-journal.h>
+
+#include <array>
+
 #include "spdlog/details/null_mutex.h"
 #include "spdlog/details/synchronous_factory.h"
 #include "spdlog/sinks/base_sink.h"
-
-#include <systemd/sd-journal.h>
-#include <array>
 
 namespace spdlog {
 namespace sinks {

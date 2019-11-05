@@ -7,6 +7,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+
 #include "spdlog/details/console_globals.h"
 #include "spdlog/details/null_mutex.h"
 #include "spdlog/sinks/sink.h"
