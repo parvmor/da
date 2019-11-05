@@ -1,50 +1,29 @@
 #include <da/receiver/receiver.h>
-
-#include <utility>
-
 #include <da/util/logging.h>
-#include <da/util/util.h>
+
+#include <memory>
+#include <string>
 
 namespace da {
 namespace receiver {
-namespace {
 
-std::tuple<int, int, std::string> getProcessIdAndMessage(const char* buffer) {
-  return {util::stringToInteger(buffer),
-          util::stringToInteger(buffer + sizeof(int)),
-          std::string(buffer + 2 * sizeof(int))};
-}
-
-}  // namespace
-
-void Receiver::operator()() {
-  while (alive_) {
-    char buffer[link::msg_length];
-    const auto int_or = sock_->recv(buffer, link::msg_length);
+void Receiver::operator()(broadcast::UniformFIFOReliable* fifo_urb) {
+  while (isAlive()) {
+    auto buffer = std::make_unique<char[]>(link::min_length);
+    const auto int_or = sock_->recv(buffer.get(), link::max_length);
     if (!int_or.ok()) {
       LOG("Receiving from the socket failed. Status: ", int_or.status());
       continue;
     }
-    if (int_or.value() != link::msg_length) {
-      LOG("Unable to receive a message of length ", link::msg_length,
+    if (int_or.value() < broadcast::fifo_min_length) {
+      LOG("Unable to receive a message of length atleast ", link::min_length,
           " from the socket. Received length: ", int_or.value());
       continue;
     }
-    int process_id, ack;
-    std::string message;
-    std::tie(process_id, ack, message) = getProcessIdAndMessage(buffer);
-    // LOG("RECEIVING FROM ", process_id, " MESSAGE ", message, " ACK ", ack);
-    // LOG("Received message: ", message, " from process with id: ",
-    // process_id);
-    if (process_id < 1 || process_id > int((*perfect_links_).size())) {
-      LOG("Received message: ", message,
-          " from process with unknown id: ", process_id);
-    } else {
-      std::unique_ptr<da::link::PerfectLink>* link =
-          &(*perfect_links_)[process_id - 1];
-      executor_->add(
-          [link, message, ack]() { (*link)->recvMessage(message, ack); });
-    }
+    std::string msg(buffer.get(), int_or.value());
+    executor_->add([&fifo_urb, msg = std::move(msg)]() {
+      fifo_urb->deliver(std::move(msg));
+    });
   }
 }
 

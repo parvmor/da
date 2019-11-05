@@ -1,6 +1,8 @@
 #ifndef __INCLUDED_DA_EXECUTOR_THREAD_SAFE_QUEUE_H_
 #define __INCLUDED_DA_EXECUTOR_THREAD_SAFE_QUEUE_H_
 
+#include <atomic>
+#include <iostream>
 #include <mutex>
 #include <queue>
 #include <vector>
@@ -11,12 +13,26 @@ namespace executor {
 template <typename T>
 class ThreadSafeQueue {
  public:
-  ThreadSafeQueue() {}
+  ThreadSafeQueue() : alive_(true) {}
   ~ThreadSafeQueue() {}
 
   bool empty() {
+    if (!alive_) {
+      return true;
+    }
     std::unique_lock<std::mutex> lock(mutex_);
     return queue_.empty();
+  }
+
+  void stop() {
+    alive_ = false;
+    std::cout << "Stopping queue of size" << queue_.size() << std::endl;
+    std::unique_lock<std::mutex> lock(mutex_);
+    std::cout << "Lock aquired" << std::endl;
+    std::queue<T> empty = std::queue<T>(); //Point of failure??
+    std::cout << "Empty queue created" << std::endl;
+    std::swap(queue_,empty);
+    std::cout << "Queue stopped" << std::endl;
   }
 
   int size() {
@@ -25,23 +41,30 @@ class ThreadSafeQueue {
   }
 
   void enqueue(const T& t) {
+    if (!alive_) {
+      return;
+    }
     std::unique_lock<std::mutex> lock(mutex_);
     queue_.push(t);
   }
 
   bool dequeue(T& t) {
+    if (!alive_) {
+      return false;
+    }
     std::unique_lock<std::mutex> lock(mutex_);
     if (queue_.empty()) {
       return false;
     }
-    t = std::move(queue_.top());
+    t = std::move(queue_.front());
     queue_.pop();
     return true;
   }
 
  private:
   std::mutex mutex_;
-  std::priority_queue<T, std::vector<T>, std::greater<T>> queue_;
+  std::atomic<bool> alive_;
+  std::queue<T> queue_;
 };
 
 }  // namespace executor

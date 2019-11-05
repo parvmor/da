@@ -1,7 +1,8 @@
 COMPILER = g++
-DEBUG_CFLAGS = -Wall -I. -std=c++14 -pthread -g -DENABLE_LOG -fsanitize=undefined
+LOG_CFLAGS = -Wall -I. -std=c++14 -pthread -g -DENABLE_LOG -fsanitize=undefined
+DEBUG_CFLAGS = -Wall -I. -std=c++14 -pthread -g -DENABLE_DEBUG -fsanitize=undefined
 CFLAGS = -Wall -I. -O3 -std=c++14 -pthread
-CC = $(COMPILER) $(DEBUG_CFLAGS)
+CC = $(COMPILER) $(CFLAGS)
 BIN = da_proc
 BUILD = build
 SRC = da
@@ -30,7 +31,7 @@ bin: da_proc
 run: all
 	./da_proc ${PROCESS} membership ${MESSAGES}
 
-da_proc: % : $(SRC)/%.cc util/status process/process init/parser socket/udp_socket executor/executor link/perfect_link receiver/receiver broadcast/uniform_reliable
+da_proc: % : $(SRC)/%.cc util/status process/process init/parser socket/udp_socket executor/executor executor/scheduler link/perfect_link receiver/receiver broadcast/uniform_reliable broadcast/fifo
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
@@ -40,22 +41,32 @@ init/parser: % : $(SRC)/%.cc util/status process/process
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
 
-receiver/receiver: % : $(SRC)/%.cc util/status executor/executor socket/udp_socket broadcast/uniform_reliable link/perfect_link util/util
+receiver/receiver: % : $(SRC)/%.cc util/status executor/executor socket/udp_socket broadcast/fifo link/perfect_link util/util
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
 
-broadcast/uniform_reliable: % : $(SRC)/%.cc process/process link/perfect_link 
+broadcast/uniform_reliable: % : $(SRC)/%.cc process/process link/perfect_link
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
 
-link/perfect_link: % : $(SRC)/%.cc util/status process/process socket/udp_socket executor/executor util/util
+broadcast/fifo: % : $(SRC)/%.cc process/process link/perfect_link broadcast/uniform_reliable
+	mkdir -p $(shell dirname $(BUILD)/$@.o)
+	$(CC) -c -o $(BUILD)/$@.o $<
+	$(eval OBJS += $(BUILD)/$@.o)
+
+link/perfect_link: % : $(SRC)/%.cc util/status process/process socket/udp_socket executor/scheduler util/util
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
 
 executor/executor: % : $(SRC)/%.cc
+	mkdir -p $(shell dirname $(BUILD)/$@.o)
+	$(CC) -c -o $(BUILD)/$@.o $<
+	$(eval OBJS += $(BUILD)/$@.o)
+
+executor/scheduler: % : $(SRC)/%.cc
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)

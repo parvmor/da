@@ -1,59 +1,102 @@
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <atomic>
-#include <cassert>
-#include <memory>
-#include <thread>
-
 #include <da/broadcast/uniform_reliable.h>
 #include <da/executor/executor.h>
+#include <da/executor/scheduler.h>
 #include <da/init/parser.h>
 #include <da/link/perfect_link.h>
 #include <da/receiver/receiver.h>
 #include <da/socket/udp_socket.h>
 #include <da/util/logging.h>
 #include <da/util/statusor.h>
+#include <da/util/util.h>
+#include <signal.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/spdlog.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#include <atomic>
+#include <cassert>
+#include <functional>
+#include <memory>
+#include <thread>
 
 namespace {
 
 std::atomic<bool> can_start{false};
+std::shared_ptr<spdlog::logger> file_logger;
+std::unique_ptr<da::executor::Executor> executor;
+std::unique_ptr<da::executor::Scheduler> scheduler;
+std::unique_ptr<da::receiver::Receiver> receiver;
+std::unique_ptr<std::thread> receiver_thread;
+std::unique_ptr<da::socket::UDPSocket> sock;
 
-void registerSignalHandlers() {
-  // Register a function to toggle the can_start when SIGUSR2 is received.
+void registerUsrHandlers() {
+  // Register a function to toggle the can_start when SIGUSR{1,2} is received.
   // NOTE: Lambda and function pointers have different types and hence, a
   // positive lambda has been used.
   signal(
-      SIGUSR2, +[](int signal) { can_start = true; });
-  // TODO(parvmor): Fix the following signal handlers.
+      SIGUSR1, +[](int signum) { can_start = true; });
   signal(
-      SIGTERM, +[](int signal) { can_start = false; });
-  signal(
-      SIGINT, +[](int signal) { can_start = false; });
+      SIGUSR2, +[](int signum) { can_start = true; });
 }
 
-void stop(int signum) {
-  // reset signal handlers to default
+void exitHandler(int signum) {
+  // Reset the handler to default one.
   signal(SIGTERM, SIG_DFL);
   signal(SIGINT, SIG_DFL);
 
-  // immediately stop network packet processing
-  printf("Immediately stopping network packet processing.\n");
+  // Break from the infitnite broadcasting loop.
+  can_start = false;
+  // Stop the receiver.
+  if (receiver != nullptr) {
+    LOG("Stopping the receiver.");
+    receiver->stop();
+  }
+  // Stop the executor.
+  if (executor != nullptr) {
+    LOG("Stopping the executor.");
+    executor->stop();
+  } else {
+    std::cout << "Why is there no executor to stop" << std::endl;
+  }
+  // Stop the scheduler.
+  if (scheduler != nullptr) {
+    LOG("Stopping the scheduler.");
+    scheduler->stop();
+  }
+  // Stop the receiver thread.
+  if (receiver_thread != nullptr && receiver_thread->joinable()) {
+    LOG("Stopping the receiver thread.");
+    receiver_thread->join();
+  }
+  // Flush the output to the files.
+  if (file_logger != nullptr) {
+    LOG("Flushing the output.");
+    file_logger->flush();
+  }
+  LOG("Done flushing the output.");
+  if (sock != nullptr) {
+    sock->disconnect();
+  }
+  // Exit the program.
+  std::cerr << "Exiting the program..." << std::endl;
+  _exit(0);
+}
 
-  // write/flush output file if necessary
-  printf("Writing output.\n");
-
-  // exit directly from signal handler
-  exit(0);
+void registerTermAndIntHandlers() {
+  signal(SIGTERM, exitHandler);
+  signal(SIGINT, exitHandler);
 }
 
 }  // namespace
 
 int main(int argc, char** argv) {
   LOG("Initializing...");
-  // Register different signal handlers.
-  registerSignalHandlers();
+  // Register the SIGUSR{1,2} signal handler.
+  registerUsrHandlers();
+  // Register the termination signal handlers.
+  registerTermAndIntHandlers();
   // Parse the membership file.
   auto processes_or = da::init::parse(argc, argv);
   if (!processes_or.ok()) {
@@ -75,29 +118,40 @@ int main(int argc, char** argv) {
                          "Could not find current process."));
     return 1;
   }
-  // Create executor and a UDP socket for current process.
-  auto executor = std::make_unique<da::executor::Executor>();
-  auto sock = std::make_unique<da::socket::UDPSocket>(
-      current_process->getIPAddr(), current_process->getPort());
+  // Create an in memory logger that will eventually flush to file.
+  file_logger = spdlog::basic_logger_mt(
+      "basic_logger",
+      "da_proc_" + std::to_string(current_process->getId()) + ".out", true);
+  file_logger->set_pattern("%v");
+  // Create executors and a UDP socket for current process.
+  int num_threads = std::thread::hardware_concurrency() * 5;
+  executor = std::make_unique<da::executor::Executor>(
+      (num_threads + processes.size() - 1) / (processes.size()));
+  scheduler = std::make_unique<da::executor::Scheduler>(1);
+  // Create a socket with receive timeout of 1000 micro-seconds.
+  struct timeval tv;
+  tv.tv_sec = 1;
+  tv.tv_usec = 0;
+  sock = std::make_unique<da::socket::UDPSocket>(
+      current_process->getIPAddr(), current_process->getPort(), tv);
   // Create a list of perfect links to all the processes.
   std::vector<std::unique_ptr<da::link::PerfectLink>> perfect_links;
   perfect_links.reserve(processes.size());
   for (const auto& process : processes) {
     perfect_links.emplace_back(std::make_unique<da::link::PerfectLink>(
-        executor.get(), sock.get(), current_process, process.get()));
+        scheduler.get(), sock.get(), current_process, process.get()));
   }
-
   // Create a uniform reliable broadcast object.
-  auto urb = std::make_unique<da::broadcast::UniformReliable>(current_process,
-                                                              &perfect_links);
-
-  for (long unsigned int i = 0; i < perfect_links.size(); i++)
-    perfect_links[i]->setUrb(&urb);
-
+  auto urb = std::make_unique<da::broadcast::UniformReliable>(
+      current_process, std::move(perfect_links));
+  // Create a uniform FIFO reliable broadcast object.
+  auto fifo_urb = std::make_unique<da::broadcast::UniformFIFOReliable>(
+      current_process, std::move(urb), processes.size(), file_logger.get());
   // Launch a thread that will be receiving packets.
-  auto receiver = std::make_unique<da::receiver::Receiver>(
-      executor.get(), sock.get(), &perfect_links);
-  auto receiver_thread = std::thread([&receiver]() { (*receiver)(); });
+  receiver =
+      std::make_unique<da::receiver::Receiver>(executor.get(), sock.get());
+  receiver_thread = std::make_unique<std::thread>(
+      [&fifo_urb]() { (*receiver)(fifo_urb.get()); });
   // Loop until SIGUSR2 hasn't received.
   while (!can_start) {
     struct timespec sleep_time;
@@ -108,17 +162,18 @@ int main(int argc, char** argv) {
   // Start to broadcast messages.
   LOG("Broadcasting messages...");
   for (int id = 1; id <= current_process->getMessageCount(); id++) {
-    urb->broadcast(id);
+    if (!can_start) {
+      break;
+    }
+    const std::string msg = da::util::integerToString(id);
+    fifo_urb->broadcast(&msg);
   }
-  while (can_start) {
+  // Loop infinitely. Use the signal handler to exit the code.
+  while (true) {
     struct timespec sleep_time;
-    sleep_time.tv_sec = 2;
+    sleep_time.tv_sec = 10000;
     sleep_time.tv_nsec = 0;
     nanosleep(&sleep_time, NULL);
   }
-  // Stop and wait for receiver thread to exit gracefully.
-  receiver->stop();
-  // TODO(parvmor): Exit gracefully.
-  receiver_thread.~thread();
   return 0;
 }

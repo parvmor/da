@@ -34,7 +34,7 @@ make
 # prepare input
 if [ "$1" = "FIFO" ]; then
 echo "writing FIFO input..."
- 
+
 echo "5
 1 127.0.0.1 12001
 2 127.0.0.1 12002
@@ -42,9 +42,9 @@ echo "5
 4 127.0.0.1 12004
 5 127.0.0.1 12005" > membership
 
-else 
+else
 echo "writing LCausal input..."
-    
+
 echo "5
 1 127.0.0.1 12001
 2 127.0.0.1 12002

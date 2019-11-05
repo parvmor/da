@@ -1,4 +1,11 @@
+#include <da/executor/scheduler.h>
 #include <da/link/perfect_link.h>
+#include <da/process/process.h>
+#include <da/socket/udp_socket.h>
+#include <da/util/logging.h>
+#include <da/util/status.h>
+#include <da/util/statusor.h>
+#include <da/util/util.h>
 
 #include <chrono>
 #include <cstring>
@@ -8,39 +15,43 @@
 #include <sstream>
 #include <string>
 
-#include <da/broadcast/uniform_reliable.h>
-#include <da/executor/executor.h>
-#include <da/process/process.h>
-#include <da/socket/udp_socket.h>
-#include <da/util/logging.h>
-#include <da/util/status.h>
-#include <da/util/statusor.h>
-#include <da/util/util.h>
-
 namespace da {
 namespace link {
 namespace {
 
-std::string constructMessage(int process_id, int ack, std::string message) {
-  return util::integerToString(process_id) + util::integerToString(ack) +
-         message;
+// Assumes that message has a valid minimum length.
+bool isAckMessage(const std::string& msg) {
+  return util::stringToBool(msg.data() + sizeof(int));
+}
+
+// Assumes that message has a valid minimum length.
+std::string constructInverseMessage(std::string msg, int process_id, bool ack) {
+  std::string process_id_str = util::integerToString(process_id);
+  for (int i = 0; i < int(sizeof(int)); i++) {
+    msg[i] = process_id_str[i];
+  }
+  msg[sizeof(int)] = util::boolToString(ack)[0];
+  return msg;
 }
 
 }  // namespace
 
-const int msg_length = 255 * sizeof(int);
+const int max_length = 64 * sizeof(int);
+const int min_length = sizeof(int) + sizeof(bool);
 
-PerfectLink::PerfectLink(executor::Executor* executor, socket::UDPSocket* sock,
+PerfectLink::PerfectLink(executor::Scheduler* scheduler,
+                         socket::UDPSocket* sock,
                          const process::Process* local_process,
                          const process::Process* foreign_process)
-    : PerfectLink(executor, sock, local_process, foreign_process,
-                  std::chrono::microseconds(1000)) {}
+    : PerfectLink(scheduler, sock, local_process, foreign_process,
+                  std::chrono::microseconds(2000000)) {}
 
-PerfectLink::PerfectLink(executor::Executor* executor, socket::UDPSocket* sock,
+PerfectLink::PerfectLink(executor::Scheduler* scheduler,
+                         socket::UDPSocket* sock,
                          const process::Process* local_process,
                          const process::Process* foreign_process,
                          std::chrono::microseconds interval)
-    : executor_(executor),
+    : scheduler_(scheduler),
       sock_(sock),
       local_process_(local_process),
       foreign_process_(foreign_process),
@@ -51,90 +62,81 @@ PerfectLink::~PerfectLink() {
   undelivered_messages_.clear();
 }
 
-void PerfectLink::setUrb(std::unique_ptr<broadcast::UniformReliable>* urb) {
-  this->urb_ = urb;
+int PerfectLink::constructIdentity(const std::string* msg) {
+  using namespace std::string_literals;
+  std::string link_msg = ""s;
+  link_msg += util::integerToString(local_process_->getId());
+  link_msg += util::boolToString(false);
+  link_msg += *msg;
+  return identity_manager_.assignId(link_msg);
 }
 
-void PerfectLink::sendMessage(std::string message) {
+void PerfectLink::sendMessage(const std::string* msg) {
+  int id = constructIdentity(msg);
   {
     std::unique_lock<std::shared_timed_mutex> lock(mutex_);
-    undelivered_messages_.insert(message);
+    undelivered_messages_.insert(id);
   }
-  sendMessageCallback(message);
+  sendMessageCallback(id);
 }
 
-std::tuple<int, int, const char*> getProcessIdAndMessage(const char* buffer) {
-  return {util::stringToInteger(buffer),
-          util::stringToInteger(buffer + sizeof(int)),
-          buffer + 2 * sizeof(int)};
-}
-
-void PerfectLink::sendMessageCallback(std::string message) {
+void PerfectLink::sendMessageCallback(int id) {
   {
     std::shared_lock<std::shared_timed_mutex> lock(mutex_);
-    if (undelivered_messages_.find(message) == undelivered_messages_.end()) {
+    if (undelivered_messages_.find(id) == undelivered_messages_.end()) {
       return;
     }
   }
-  const auto msg_str =
-      constructMessage(local_process_->getId(), 0, message).data();
-
-  // LOG("Sending message '", local_process_->getId(), " ", message,
-  //    "' of length ", msg_length, " to ", *foreign_process_);
+  const std::string* msg = identity_manager_.getValue(id);
+  // The message is non-ascii and hence, cannot be printed.
+  LOG("Sending message '", util::stringToBinary(msg), "' to ",
+      *foreign_process_);
   const auto status =
-      sock_->sendTo(msg_str, msg_length, foreign_process_->getIPAddr(),
+      sock_->sendTo(msg->data(), msg->size(), foreign_process_->getIPAddr(),
                     foreign_process_->getPort());
   if (!status.ok()) {
-    LOG("Sending of message '", local_process_->getId(), " ", message,
-        "' of length ", msg_length, " to ", *foreign_process_,
-        " failed. Status: ", status);
+    LOG("Sending of message '", util::stringToBinary(msg), "' to ",
+        *foreign_process_, " failed. Status: ", status);
   }
-  executor_->schedule(
-      interval_, std::bind(&PerfectLink::sendMessageCallback, this, message));
+  scheduler_->schedule(interval_,
+                       std::bind(&PerfectLink::sendMessageCallback, this, id));
 }
 
-void PerfectLink::sendAckMessage(std::string message) {
-  const auto msg_str =
-      constructMessage(local_process_->getId(), 1, message).data();
-  // LOG("Sending message '", local_process_->getId(), " ", message,
-  //    "' of length ", msg_length, " to ", *foreign_process_);
+void PerfectLink::ackMessage(const std::string& msg) {
+  const std::string ack_msg =
+      constructInverseMessage(msg, local_process_->getId(), true);
   const auto status =
-      sock_->sendTo(msg_str, msg_length, foreign_process_->getIPAddr(),
-                    foreign_process_->getPort());
+      sock_->sendTo(ack_msg.data(), ack_msg.size(),
+                    foreign_process_->getIPAddr(), foreign_process_->getPort());
   if (!status.ok()) {
-    LOG("Sending of message '", local_process_->getId(), " ", message,
-        "' of length ", msg_length, " to ", *foreign_process_,
-        " failed. Status: ", status);
+    LOG("Sending of message '", util::stringToBinary(&ack_msg), "' to ",
+        *foreign_process_, " failed. Status: ", status);
   }
 }
 
-bool PerfectLink::recvMessage(std::string message, int ack) {
-  /*if (message < 1 || message > local_process_->getMessageCount()) {
-    LOG("Received an unknown message: ", message, " from the process ",
-        foreign_process_, " by process ", local_process_);
-    return false;
-  }*/
-  if (ack == 1) {
+bool PerfectLink::recvMessage(const std::string& msg) {
+  if (isAckMessage(msg)) {
+    // The inverse message must already be there in the identity manager.
+    int id = identity_manager_.getId(
+        constructInverseMessage(msg, local_process_->getId(), false));
+    if (id == -1) {
+      return false;
+    }
     {
-      std::shared_lock<std::shared_timed_mutex> lock(mutex_);
-      undelivered_messages_.erase(message);
+      std::unique_lock<std::shared_timed_mutex> lock(mutex_);
+      undelivered_messages_.erase(id);
     }
     return false;
-  } else if (ack == 0) {
-    sendAckMessage(message);
   }
-  // LOG("Received message '", message, "' from process ", foreign_process_,
-  //    " by process ", local_process_);
+  ackMessage(msg);
+  // This message might be a new one.
+  int id = identity_manager_.assignId(msg);
   std::unique_lock<std::shared_timed_mutex> lock(mutex_);
-  if (delivered_messages_.find(message) != delivered_messages_.end()) {
+  if (delivered_messages_.find(id) != delivered_messages_.end()) {
     // We have already received this message.
     return false;
   }
-  delivered_messages_.insert(message);
-
-  std::unique_ptr<broadcast::UniformReliable>* urb = urb_;
-  int id = (*foreign_process_).getId();
-  executor_->add([urb, id, message]() { (*urb)->deliver(id, message); });
+  delivered_messages_.insert(id);
   return true;
 }
 

@@ -1,9 +1,9 @@
 #ifndef __INCLUDED_DA_SOCKET_COMMUNICATING_SOCKET_H_
 #define __INCLUDED_DA_SOCKET_COMMUNICATING_SOCKET_H_
 
-#include <string>
-
 #include <da/socket/socket.h>
+
+#include <string>
 
 namespace da {
 namespace socket {

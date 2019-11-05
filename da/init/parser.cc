@@ -1,13 +1,12 @@
 #include <da/init/parser.h>
+#include <da/process/process.h>
+#include <da/util/statusor.h>
 
 #include <climits>
 #include <fstream>
 #include <memory>
 #include <string>
 #include <vector>
-
-#include <da/process/process.h>
-#include <da/util/statusor.h>
 
 namespace da {
 namespace init {

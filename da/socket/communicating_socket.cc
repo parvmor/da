@@ -1,5 +1,4 @@
 #include <da/socket/communicating_socket.h>
-
 #include <da/socket/socket.h>
 
 namespace da {

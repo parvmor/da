@@ -1,9 +1,9 @@
 #ifndef __INCLUDED_DA_SOCKET_UDP_SOCKET_H_
 #define __INCLUDED_DA_SOCKET_UDP_SOCKET_H_
 
-#include <string>
-
 #include <da/socket/communicating_socket.h>
+
+#include <string>
 
 namespace da {
 namespace socket {
@@ -15,6 +15,9 @@ class UDPSocket : public CommunicatingSocket {
   UDPSocket(unsigned short localPort) throw();
 
   UDPSocket(const std::string& localAddress, unsigned short localPort) throw();
+
+  UDPSocket(const std::string& localAddress, unsigned short localPort,
+            struct timeval tv) throw();
 
   // Unset foreign address and port.
   util::Status disconnect();
@@ -41,6 +44,7 @@ class UDPSocket : public CommunicatingSocket {
 
  private:
   void setBroadcast();
+  void setTimeout(struct timeval tv);
 };
 
 }  // namespace socket

@@ -4,16 +4,16 @@
 #define __INCLUDED_DA_SOCKET_SOCKET_H_
 
 #include <arpa/inet.h>
+#include <da/util/status.h>
+#include <da/util/statusor.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+
 #include <cstring>
 #include <string>
-
-#include <da/util/status.h>
-#include <da/util/statusor.h>
 
 namespace da {
 namespace socket {

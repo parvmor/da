@@ -1,8 +1,6 @@
-#include <da/socket/udp_socket.h>
-
-#include <errno.h>
-
 #include <da/socket/communicating_socket.h>
+#include <da/socket/udp_socket.h>
+#include <errno.h>
 
 namespace da {
 namespace socket {
@@ -22,6 +20,21 @@ UDPSocket::UDPSocket(const std::string &localAddress,
     : CommunicatingSocket(SOCK_DGRAM, IPPROTO_UDP) {
   setLocalAddressAndPort(localAddress, localPort);
   setBroadcast();
+}
+
+UDPSocket::UDPSocket(const std::string &localAddress, unsigned short localPort,
+                     struct timeval tv) throw()
+    : CommunicatingSocket(SOCK_DGRAM, IPPROTO_UDP) {
+  const auto status = setLocalAddressAndPort(localAddress, localPort);
+  if (!status.ok()) {
+    throw util::RuntimeStatusError(status);
+  }
+  setBroadcast();
+  setTimeout(tv);
+}
+
+void UDPSocket::setTimeout(struct timeval tv) {
+  setsockopt(sockDesc_, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
 }
 
 void UDPSocket::setBroadcast() {
