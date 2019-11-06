@@ -124,6 +124,8 @@ bool PerfectLink::recvMessage(const std::string& msg) {
     }
     {
       std::unique_lock<std::shared_timed_mutex> lock(mutex_);
+      // TODO: We could also delete the message from the identiy manager at this
+      // point right?
       undelivered_messages_.erase(id);
     }
     return false;

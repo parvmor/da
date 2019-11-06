@@ -28,11 +28,8 @@ class ThreadSafeQueue {
     alive_ = false;
     std::cout << "Stopping queue of size" << queue_.size() << std::endl;
     std::unique_lock<std::mutex> lock(mutex_);
-    std::cout << "Lock aquired" << std::endl;
-    std::queue<T> empty = std::queue<T>(); //Point of failure??
-    std::cout << "Empty queue created" << std::endl;
-    std::swap(queue_,empty);
-    std::cout << "Queue stopped" << std::endl;
+    std::queue<T> empty_queue = std::queue<T>();
+    swap(empty_queue, queue_);
   }
 
   int size() {

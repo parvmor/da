@@ -24,6 +24,7 @@
 namespace {
 
 std::atomic<bool> can_start{false};
+std::atomic<bool> can_stop{false};
 std::shared_ptr<spdlog::logger> file_logger;
 std::unique_ptr<da::executor::Executor> executor;
 std::unique_ptr<da::executor::Scheduler> scheduler;
@@ -42,12 +43,14 @@ void registerUsrHandlers() {
 }
 
 void exitHandler(int signum) {
+  // Break from the infitnite broadcasting loop.
+  can_stop = true;
+}
+
+void exitThreads() {
   // Reset the handler to default one.
   signal(SIGTERM, SIG_DFL);
   signal(SIGINT, SIG_DFL);
-
-  // Break from the infitnite broadcasting loop.
-  can_start = false;
   // Stop the receiver.
   if (receiver != nullptr) {
     LOG("Stopping the receiver.");
@@ -153,7 +156,7 @@ int main(int argc, char** argv) {
   receiver_thread = std::make_unique<std::thread>(
       [&fifo_urb]() { (*receiver)(fifo_urb.get()); });
   // Loop until SIGUSR2 hasn't received.
-  while (!can_start) {
+  while (!can_start && !can_stop) {
     struct timespec sleep_time;
     sleep_time.tv_sec = 0;
     sleep_time.tv_nsec = 1000;
@@ -162,18 +165,19 @@ int main(int argc, char** argv) {
   // Start to broadcast messages.
   LOG("Broadcasting messages...");
   for (int id = 1; id <= current_process->getMessageCount(); id++) {
-    if (!can_start) {
+    if (can_stop) {
       break;
     }
     const std::string msg = da::util::integerToString(id);
     fifo_urb->broadcast(&msg);
   }
   // Loop infinitely. Use the signal handler to exit the code.
-  while (true) {
+  while (!can_stop) {
     struct timespec sleep_time;
-    sleep_time.tv_sec = 10000;
-    sleep_time.tv_nsec = 0;
+    sleep_time.tv_sec = 0;
+    sleep_time.tv_nsec = 100000000;
     nanosleep(&sleep_time, NULL);
   }
+  exitThreads();
   return 0;
 }

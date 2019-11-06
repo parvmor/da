@@ -35,9 +35,9 @@ class Executor {
   bool isAlive() const { return alive_; }
 
   void stop() {
-    std::cerr << "------Stopping executor-------" << std::endl;
-    alive_ = false;
-    queue_.stop();
+    // alive_ = false;
+    // queue_.stop();
+    waitForCompletion();
   }
 
   void waitForCompletion();
