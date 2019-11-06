@@ -34,10 +34,7 @@ class Scheduler {
 
   bool isAlive() const { return alive_; }
 
-  void stop() {
-    alive_ = false;
-    queue_.stop();
-  }
+  void stop() { waitForCompletion(); }
 
   void waitForCompletion();
 

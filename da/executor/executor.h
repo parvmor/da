@@ -34,8 +34,9 @@ class Executor {
   bool isAlive() const { return alive_; }
 
   void stop() {
-    alive_ = false;
-    queue_.stop();
+    // alive_ = false;
+    // queue_.stop();
+    waitForCompletion();
   }
 
   void waitForCompletion();

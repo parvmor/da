@@ -57,6 +57,7 @@ int UniformFIFOReliable::constructIdentity(const std::string* msg) {
 }
 
 bool UniformFIFOReliable::deliverToURB(const std::string& msg) {
+//TODO: urb_ here is not always accessible...I have no idea why
   if (!urb_->deliver(msg)) {
     LOG("Message: ", util::stringToBinary(&msg), " was rejected by URB.");
     return false;
@@ -98,7 +99,7 @@ bool UniformFIFOReliable::deliver(const std::string& msg) {
 }
 
 UniformFIFOReliable::ProcessData::ProcessData(UniformFIFOReliable* fifo_urb)
-    : fifo_urb_(fifo_urb), next_(0) {}
+    : fifo_urb_(fifo_urb), next_(0), delivered_msgs_(0) {}
 
 int UniformFIFOReliable::ProcessData::getDeliveredMessages() const {
   return delivered_msgs_;

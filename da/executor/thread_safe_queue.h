@@ -26,7 +26,8 @@ class ThreadSafeQueue {
   void stop() {
     alive_ = false;
     std::unique_lock<std::mutex> lock(mutex_);
-    queue_ = std::queue<T>();
+    std::queue<T> empty_queue = std::queue<T>();
+    swap(empty_queue, queue_);
   }
 
   int size() {
