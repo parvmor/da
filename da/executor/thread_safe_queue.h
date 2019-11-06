@@ -26,7 +26,6 @@ class ThreadSafeQueue {
 
   void stop() {
     alive_ = false;
-    std::cout << "Stopping queue of size" << queue_.size() << std::endl;
     std::unique_lock<std::mutex> lock(mutex_);
     std::queue<T> empty_queue = std::queue<T>();
     swap(empty_queue, queue_);
