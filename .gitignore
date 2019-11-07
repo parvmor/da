@@ -36,3 +36,4 @@ membership
 .vscode/
 PASS
 valgrind-logs
+helgrind-logs

@@ -55,11 +55,6 @@ void exitThreads() {
   // Reset the handler to default one.
   signal(SIGTERM, SIG_DFL);
   signal(SIGINT, SIG_DFL);
-  // Disconnect the socket.
-  if (sock != nullptr) {
-    LOG("Disconnecting the socket.");
-    sock->disconnect();
-  }
   // Stop and wait for any intermediate tasks in executor to be completed.
   if (executor != nullptr) {
     LOG("Stopping the executor.");
@@ -79,6 +74,14 @@ void exitThreads() {
   if (receiver_thread != nullptr && receiver_thread->joinable()) {
     LOG("Stopping the receiver thread.");
     receiver_thread->join();
+  }
+  // Disconnect the socket.
+  if (sock != nullptr) {
+    LOG("Disconnecting the socket.");
+    const auto status = sock->disconnect();
+    if (!status.ok()) {
+      LOG("Failed to disconnect. Status: ", status);
+    }
   }
   // Flush the output to the files.
   if (file_logger != nullptr) {

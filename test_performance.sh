@@ -21,14 +21,17 @@ echo "5
 #start 5 processes
 for i in `seq 1 5`
 do
-    valgrind \
-      --leak-check=full \
-      --show-leak-kinds=all \
-      --track-origins=yes \
-      --verbose \
-      --log-file=valgrind-logs/logs-$i.txt \
-      ./da_proc $i membership 3000 &
-    # ./da_proc $i membership 300000 &
+    # valgrind \
+    #   --leak-check=full \
+    #   --show-leak-kinds=all \
+    #   --track-origins=yes \
+    #   --verbose \
+    #   --log-file=valgrind-logs/logs-$i.txt \
+    #   ./da_proc $i membership 3000 &
+    # valgrind --tool=helgrind \
+    #   --log-file=helgrind-logs/logs-$i.txt \
+    #   ./da_proc $i membership 3000 &
+    ./da_proc $i membership 300000 &
     da_proc_id[$i]=$!
     echo ${da_proc_id[$i]}
 done
