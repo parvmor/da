@@ -66,17 +66,15 @@ bool UniformFIFOReliable::deliverToURB(const std::string& msg) {
 }
 
 void UniformFIFOReliable::broadcast(const std::string* msg) {
-  // Wait until we have seen a considerable amount of delivered messages.
-  int delivered_msgs =
-      process_data_[local_process_->getId() - 1]->getDeliveredMessages();
-  while (broadcast_msgs_ - delivered_msgs > 17500) {
-    if (kCanStop) {
-      return;
-    }
-    // Sleep for 1 milli second(s).
-    util::nanosleep(1000000);
-    delivered_msgs =
-        process_data_[local_process_->getId() - 1]->getDeliveredMessages();
+  int num_undelivered = 0;
+  for (const auto& process_data : process_data_) {
+    num_undelivered += process_data->getUndeliveredMessages();
+  }
+  if (num_undelivered > 1000) {
+    util::nanosleep(num_undelivered * 100);
+  }
+  if (kCanStop) {
+    return;
   }
   broadcast_msgs_ += 1;
   int id = constructIdentity(msg);
@@ -109,8 +107,15 @@ int UniformFIFOReliable::ProcessData::getDeliveredMessages() const {
   return delivered_msgs_;
 }
 
+int UniformFIFOReliable::ProcessData::getUndeliveredMessages() const {
+  return max_sn_ - next_ - pending_messages_.size();
+}
+
 void UniformFIFOReliable::ProcessData::deliver(int sn, int msg_id) {
   std::unique_lock<std::mutex> lock(mutex_);
+  if (sn > max_sn_) {
+    max_sn_ = sn;
+  }
   pending_messages_[sn] = msg_id;
   auto it = pending_messages_.find(next_);
   while (it != pending_messages_.end()) {

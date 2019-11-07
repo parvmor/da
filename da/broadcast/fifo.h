@@ -57,11 +57,13 @@ class UniformFIFOReliable::ProcessData {
   void deliver(int sn, int msg_id);
 
   int getDeliveredMessages() const;
+  int getUndeliveredMessages() const;
 
  private:
   UniformFIFOReliable* fifo_urb_;
   std::atomic<int> next_;
   std::atomic<int> delivered_msgs_;
+  std::atomic<int> max_sn_;
   std::mutex mutex_;
   // Contains the mapping from the sequence number of undelivered message to
   // message identifier.
