@@ -45,7 +45,7 @@ PerfectLink::PerfectLink(executor::Scheduler* scheduler,
                          const process::Process* local_process,
                          const process::Process* foreign_process)
     : PerfectLink(scheduler, sock, local_process, foreign_process,
-                  std::chrono::microseconds(1000000)) {}
+                  std::chrono::microseconds(100000)) {}
 
 PerfectLink::PerfectLink(executor::Scheduler* scheduler,
                          socket::UDPSocket* sock,
