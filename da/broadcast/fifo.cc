@@ -4,6 +4,7 @@
 #include <string>
 
 #include <da/broadcast/uniform_reliable.h>
+#include <da/da_proc.h>
 #include <da/process/process.h>
 #include <da/util/logging.h>
 #include <da/util/util.h>
@@ -70,6 +71,9 @@ void UniformFIFOReliable::broadcast(const std::string* msg) {
       broadcast_msgs_ -
           process_data_[local_process_->getId() - 1]->getDeliveredMessages() >
       17500) {
+    if (kCanStop) {
+      return;
+    }
     // Sleep for 1 milli second(s).
     util::nanosleep(1000000);
   }

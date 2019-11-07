@@ -9,6 +9,7 @@
 #include <thread>
 
 #include <da/broadcast/uniform_reliable.h>
+#include <da/da_proc.h>
 #include <da/executor/executor.h>
 #include <da/executor/scheduler.h>
 #include <da/init/parser.h>
@@ -21,10 +22,15 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
 
+namespace da {
+
+std::atomic<bool> kCanStop{false};
+
+}  // namespace da
+
 namespace {
 
 std::atomic<bool> can_start{false};
-std::atomic<bool> can_stop{false};
 std::shared_ptr<spdlog::logger> file_logger;
 std::unique_ptr<da::executor::Executor> executor;
 std::unique_ptr<da::executor::Scheduler> scheduler;
@@ -42,19 +48,17 @@ void registerUsrHandlers() {
 
 void exitHandler(int signum) {
   // Break free from infinite loops.
-  can_stop = true;
+  da::kCanStop = true;
 }
 
 void exitThreads() {
   // Reset the handler to default one.
   signal(SIGTERM, SIG_DFL);
   signal(SIGINT, SIG_DFL);
-  // Break from the infitnite broadcasting loop.
-  can_start = false;
-  // Stop the receiver.
-  if (receiver != nullptr) {
-    LOG("Stopping the receiver.");
-    receiver->stop();
+  // Disconnect the socket.
+  if (sock != nullptr) {
+    LOG("Disconnecting the socket.");
+    sock->disconnect();
   }
   // Stop and wait for any intermediate tasks in executor to be completed.
   if (executor != nullptr) {
@@ -66,6 +70,11 @@ void exitThreads() {
     LOG("Stopping the scheduler.");
     scheduler->waitForCompletion();
   }
+  // Stop the receiver.
+  if (receiver != nullptr) {
+    LOG("Stopping the receiver.");
+    receiver->stop();
+  }
   // Stop the receiver thread.
   if (receiver_thread != nullptr && receiver_thread->joinable()) {
     LOG("Stopping the receiver thread.");
@@ -75,10 +84,6 @@ void exitThreads() {
   if (file_logger != nullptr) {
     LOG("Flushing the output.");
     file_logger->flush();
-  }
-  LOG("Done flushing the output.");
-  if (sock != nullptr) {
-    sock->disconnect();
   }
 }
 
@@ -150,8 +155,8 @@ int main(int argc, char** argv) {
       std::make_unique<da::receiver::Receiver>(executor.get(), sock.get());
   receiver_thread = std::make_unique<std::thread>(
       [&fifo_urb]() { (*receiver)(fifo_urb.get()); });
-  // Loop until SIGUSR2 hasn't received.
-  while (!can_start && !can_stop) {
+  // Loop until SIGUSR2 hasn't received or an exit is called.
+  while (!can_start && !da::kCanStop) {
     struct timespec sleep_time;
     sleep_time.tv_sec = 0;
     sleep_time.tv_nsec = 1000;
@@ -160,14 +165,14 @@ int main(int argc, char** argv) {
   // Start to broadcast messages.
   LOG("Broadcasting messages...");
   for (int id = 1; id <= current_process->getMessageCount(); id++) {
-    if (can_stop) {
+    if (da::kCanStop) {
       break;
     }
     const std::string msg = da::util::integerToString(id);
     fifo_urb->broadcast(&msg);
   }
-  // Loop infinitely. Signal handler will set `can_stop` to false.
-  while (!can_stop) {
+  // Loop infinitely. Signal handler will set `kCanStop` to false.
+  while (!da::kCanStop) {
     // Sleep for 100 milli-seconds.
     struct timespec sleep_time;
     sleep_time.tv_sec = 0;
