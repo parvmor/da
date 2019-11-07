@@ -35,6 +35,10 @@ class UniformFIFOReliable {
   // Triggers the uniform reliable's delivery.
   bool deliverToURB(const std::string& msg);
 
+  // Uses a heursitic to decide if we should stop broadcasting messages for a
+  // while.
+  bool shouldBroadcast();
+
   const process::Process* local_process_;
   std::unique_ptr<UniformReliable> urb_;
   // Denotes the sequence number used to decide delivery order.
