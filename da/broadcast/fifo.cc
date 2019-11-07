@@ -67,15 +67,16 @@ bool UniformFIFOReliable::deliverToURB(const std::string& msg) {
 
 void UniformFIFOReliable::broadcast(const std::string* msg) {
   // Wait until we have seen a considerable amount of delivered messages.
-  while (
-      broadcast_msgs_ -
-          process_data_[local_process_->getId() - 1]->getDeliveredMessages() >
-      17500) {
+  int delivered_msgs =
+      process_data_[local_process_->getId() - 1]->getDeliveredMessages();
+  while (broadcast_msgs_ - delivered_msgs > 17500) {
     if (kCanStop) {
       return;
     }
     // Sleep for 1 milli second(s).
     util::nanosleep(1000000);
+    delivered_msgs =
+        process_data_[local_process_->getId() - 1]->getDeliveredMessages();
   }
   broadcast_msgs_ += 1;
   int id = constructIdentity(msg);
