@@ -35,3 +35,4 @@ da_proc
 membership
 .vscode/
 PASS
+valgrind-logs

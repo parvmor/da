@@ -80,9 +80,6 @@ void exitThreads() {
   if (sock != nullptr) {
     sock->disconnect();
   }
-  // Exit the program.
-  std::cerr << "Exiting the program..." << std::endl;
-  _exit(0);
 }
 
 void registerTermAndIntHandlers() {
@@ -178,5 +175,7 @@ int main(int argc, char** argv) {
     nanosleep(&sleep_time, NULL);
   }
   exitThreads();
+  // Exit the program.
+  std::cerr << "Exiting the program..." << std::endl;
   return 0;
 }

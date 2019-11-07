@@ -9,7 +9,7 @@
 #
 
 evaluation_time=$1
-init_time=2
+init_time=5
 
 echo "5
 1 127.0.0.1 11001
@@ -21,7 +21,14 @@ echo "5
 #start 5 processes
 for i in `seq 1 5`
 do
-    ./da_proc $i membership 300000 &
+    valgrind \
+      --leak-check=full \
+      --show-leak-kinds=all \
+      --track-origins=yes \
+      --verbose \
+      --log-file=valgrind-logs/logs-$i.txt \
+      ./da_proc $i membership 3000 &
+    # ./da_proc $i membership 300000 &
     da_proc_id[$i]=$!
     echo ${da_proc_id[$i]}
 done
