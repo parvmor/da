@@ -15,7 +15,7 @@ namespace {
 
 // Assumes that the message has a valid minimum length.
 inline int unpackProcessId(const std::string& msg) {
-  return util::stringToInteger(msg.data());
+  return util::stringToInteger<uint16_t>(msg.data());
 }
 
 }  // namespace
@@ -36,14 +36,14 @@ int UniformReliable::constructIdentity(const std::string* msg) {
 
 bool UniformReliable::deliverToPerfectLink(const std::string& msg) {
   int process_id = unpackProcessId(msg);
-  if (process_id < 1 || process_id > int(perfect_links_.size())) {
+  if (process_id < 0 || process_id >= int(perfect_links_.size())) {
     LOG("Received message: ", util::stringToBinary(&msg),
-        " from process with unknown id: ", process_id);
+        " from process with unknown id: ", process_id + 1);
     return false;
   }
-  if (!perfect_links_[process_id - 1]->recvMessage(msg)) {
+  if (!perfect_links_[process_id]->recvMessage(msg)) {
     LOG("Message: ", util::stringToBinary(&msg),
-        " from process with id: ", process_id,
+        " from process with id: ", process_id + 1,
         " was rejected by perfect link.");
     return false;
   }

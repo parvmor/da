@@ -22,30 +22,30 @@ namespace {
 
 // Assumes that message has a valid minimum length.
 bool isAckMessage(const std::string& msg) {
-  return util::stringToBool(msg.data() + sizeof(int));
+  return util::stringToBool(msg.data() + sizeof(uint16_t));
 }
 
 // Assumes that message has a valid minimum length.
 std::string constructInverseMessage(std::string msg, int process_id, bool ack) {
-  std::string process_id_str = util::integerToString(process_id);
-  for (int i = 0; i < int(sizeof(int)); i++) {
+  std::string process_id_str = util::integerToString<uint16_t>(process_id);
+  for (int i = 0; i < int(sizeof(uint16_t)); i++) {
     msg[i] = process_id_str[i];
   }
-  msg[sizeof(int)] = util::boolToString(ack)[0];
+  msg[sizeof(uint16_t)] = util::boolToString(ack)[0];
   return msg;
 }
 
 }  // namespace
 
 const int max_length = 64 * sizeof(int);
-const int min_length = sizeof(int) + sizeof(bool);
+const int min_length = sizeof(uint16_t) + sizeof(bool);
 
 PerfectLink::PerfectLink(executor::Scheduler* scheduler,
                          socket::UDPSocket* sock,
                          const process::Process* local_process,
                          const process::Process* foreign_process)
     : PerfectLink(scheduler, sock, local_process, foreign_process,
-                  std::chrono::microseconds(100000)) {}
+                  std::chrono::microseconds(10000)) {}
 
 PerfectLink::PerfectLink(executor::Scheduler* scheduler,
                          socket::UDPSocket* sock,
@@ -66,7 +66,7 @@ PerfectLink::~PerfectLink() {
 int PerfectLink::constructIdentity(const std::string* msg) {
   using namespace std::string_literals;
   std::string link_msg = ""s;
-  link_msg += util::integerToString(local_process_->getId());
+  link_msg += util::integerToString<uint16_t>(local_process_->getId());
   link_msg += util::boolToString(false);
   link_msg += *msg;
   return identity_manager_.assignId(link_msg);

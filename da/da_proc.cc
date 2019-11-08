@@ -127,7 +127,7 @@ int main(int argc, char** argv) {
   // Create an in memory logger that will eventually flush to file.
   file_logger = spdlog::basic_logger_mt(
       "basic_logger",
-      "da_proc_" + std::to_string(current_process->getId()) + ".out", true);
+      "da_proc_" + std::to_string(current_process->getId() + 1) + ".out", true);
   file_logger->set_pattern("%v");
   // Create executors and a UDP socket for current process.
   int num_threads = std::thread::hardware_concurrency() * 5;
@@ -171,7 +171,7 @@ int main(int argc, char** argv) {
     if (da::kCanStop) {
       break;
     }
-    const std::string msg = da::util::integerToString(id);
+    const std::string msg = da::util::integerToString<int>(id);
     fifo_urb->broadcast(&msg);
   }
   // Loop infinitely. Signal handler will set `kCanStop` to false.
