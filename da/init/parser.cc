@@ -15,7 +15,7 @@ namespace init {
 namespace {
 
 util::StatusOr<std::vector<std::unique_ptr<process::Process>>>
-parseMembershipFile(const char* file, uint16_t current_process_id,
+parseMembershipFile(const char* file, int current_process_id,
                     int messages) {
   std::ifstream membership(file);
   if (!membership.good()) {
