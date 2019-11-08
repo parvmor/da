@@ -115,7 +115,7 @@ bool UniformFIFOReliable::deliver(const std::string& msg) {
 }
 
 UniformFIFOReliable::ProcessData::ProcessData(UniformFIFOReliable* fifo_urb)
-    : fifo_urb_(fifo_urb), next_(0), delivered_msgs_(0) {}
+    : fifo_urb_(fifo_urb), next_(0), delivered_msgs_(0), max_sn_(0) {}
 
 int UniformFIFOReliable::ProcessData::getDeliveredMessages() const {
   return delivered_msgs_;
