@@ -67,16 +67,17 @@ bool UniformFIFOReliable::deliverToURB(const std::string& msg) {
 }
 
 bool UniformFIFOReliable::shouldBroadcast() {
+  int num_threads = std::thread::hardware_concurrency();
   int num_delivered =
       process_data_[local_process_->getId()]->getDeliveredMessages();
-  if (broadcast_msgs_ - num_delivered > 17500) {
+  if (broadcast_msgs_ - num_delivered > 4375 * num_threads && num_threads < 6) {
     return false;
   }
   int num_undelivered = 0;
   for (const auto& process_data : process_data_) {
     num_undelivered += process_data->getUndeliveredMessages();
   }
-  if (num_undelivered > 10000) {
+  if (num_undelivered > 2500 * num_threads && num_threads < 6) {
     return false;
   }
   return true;
