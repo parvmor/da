@@ -110,6 +110,7 @@ parseMembershipFile(const char* file, int current_process_id, int messages) {
       // Add dependency to current process.
       processes[current_process]->addDependency(dependency);
     }
+    processes[current_process]->finalizeDependencies();
   }
   membership.close();
   return processes;

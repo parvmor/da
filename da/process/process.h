@@ -1,9 +1,10 @@
 #ifndef __INCLUDED_DA_PROCESS_PROCESS_H_
 #define __INCLUDED_DA_PROCESS_PROCESS_H_
 
+#include <algorithm>
 #include <ostream>
-#include <set>
 #include <string>
+#include <vector>
 
 namespace da {
 namespace process {
@@ -28,9 +29,15 @@ class Process {
 
   bool isCurrent() const { return current_; }
 
-  void addDependency(int id) { dependencies_.insert(id); }
+  void addDependency(int id) { dependencies_.push_back(id); }
 
-  const std::set<int>& getDependencies() const { return dependencies_; }
+  void finalizeDependencies() {
+    std::sort(dependencies_.begin(), dependencies_.end());
+    dependencies_.erase(std::unique(dependencies_.begin(), dependencies_.end()),
+                        dependencies_.end());
+  }
+
+  const std::vector<int>& getDependencies() const { return dependencies_; }
 
   void printDependencies() const;
 
@@ -45,7 +52,7 @@ class Process {
   // Denotes if this process is the one that is actually running.
   const bool current_;
   // Denotes the process ids this process is dependent on.
-  std::set<int> dependencies_;
+  std::vector<int> dependencies_;
 };
 
 }  // namespace process

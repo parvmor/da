@@ -13,8 +13,8 @@ OBJS =
 all: init bin
 
 format:
-	find . -type f -name "*.cc" | xargs -I{} bash -c 'clang-format -i {}' 2>/dev/null || echo >&2 "clang-format not found. Skipping."
-	find . -type f -name "*.h" | xargs -I{} bash -c 'clang-format -i {}' 2>/dev/null || echo >&2 "clang-format not found. Skipping."
+	find da/ -type f -name "*.cc" | xargs -I{} bash -c 'clang-format -i {}' 2>/dev/null || echo >&2 "clang-format not found. Skipping."
+	find da/ -type f -name "*.h" | xargs -I{} bash -c 'clang-format -i {}' 2>/dev/null || echo >&2 "clang-format not found. Skipping."
 
 clean:
 	rm -rf build
@@ -31,7 +31,7 @@ bin: da_proc
 run: all
 	./da_proc ${PROCESS} membership ${MESSAGES}
 
-da_proc: % : $(SRC)/%.cc util/status process/process init/parser socket/udp_socket executor/executor executor/scheduler link/perfect_link receiver/receiver broadcast/uniform_reliable broadcast/fifo
+da_proc: % : $(SRC)/%.cc util/status process/process init/parser socket/udp_socket executor/executor executor/scheduler link/perfect_link receiver/receiver broadcast/uniform_reliable broadcast/fifo broadcast/localized_causal
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
@@ -41,12 +41,17 @@ init/parser: % : $(SRC)/%.cc util/status process/process
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
 
-receiver/receiver: % : $(SRC)/%.cc util/status executor/executor socket/udp_socket broadcast/fifo link/perfect_link util/util
+receiver/receiver: % : $(SRC)/%.cc util/status executor/executor socket/udp_socket broadcast/fifo broadcast/localized_causal link/perfect_link util/util
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)
 
 broadcast/uniform_reliable: % : $(SRC)/%.cc process/process link/perfect_link
+	mkdir -p $(shell dirname $(BUILD)/$@.o)
+	$(CC) -c -o $(BUILD)/$@.o $<
+	$(eval OBJS += $(BUILD)/$@.o)
+
+broadcast/localized_causal: % : $(SRC)/%.cc process/process link/perfect_link broadcast/uniform_reliable
 	mkdir -p $(shell dirname $(BUILD)/$@.o)
 	$(CC) -c -o $(BUILD)/$@.o $<
 	$(eval OBJS += $(BUILD)/$@.o)

@@ -4,6 +4,7 @@
 #include <atomic>
 
 #include <da/broadcast/fifo.h>
+#include <da/broadcast/localized_causal.h>
 #include <da/executor/executor.h>
 #include <da/link/perfect_link.h>
 #include <da/socket/udp_socket.h>
@@ -23,6 +24,8 @@ class Receiver {
   bool isAlive() const { return alive_; }
 
   void operator()(broadcast::UniformFIFOReliable* fifo_urb);
+
+  void operator()(broadcast::UniformLocalizedCausal* lc_urb);
 
  private:
   std::atomic<bool> alive_;

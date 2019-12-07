@@ -32,5 +32,28 @@ void Receiver::operator()(broadcast::UniformFIFOReliable* fifo_urb) {
   }
 }
 
+void Receiver::operator()(broadcast::UniformLocalizedCausal* lc_urb) {
+  while (isAlive()) {
+    auto buffer = std::make_unique<char[]>(broadcast::lcb_max_length);
+    const auto int_or = sock_->recv(buffer.get(), broadcast::lcb_max_length);
+    if (!int_or.ok()) {
+      LOG("Receiving from the socket failed. Status: ", int_or.status());
+      continue;
+    }
+    if (int_or.value() < broadcast::lcb_min_length) {
+      LOG("Unable to receive a message of length atleast ",
+          broadcast::lcb_min_length,
+          " from the socket. Received length: ", int_or.value());
+      continue;
+    }
+    std::string msg(buffer.get(), int_or.value());
+    if (!isAlive()) {
+      break;
+    }
+    executor_->add(
+        [&lc_urb, msg = std::move(msg)]() { lc_urb->deliver(std::move(msg)); });
+  }
+}
+
 }  // namespace receiver
 }  // namespace da

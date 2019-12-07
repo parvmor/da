@@ -8,6 +8,7 @@
 #include <memory>
 #include <thread>
 
+#include <da/broadcast/localized_causal.h>
 #include <da/broadcast/uniform_reliable.h>
 #include <da/da_proc.h>
 #include <da/executor/executor.h>
@@ -114,14 +115,11 @@ int main(int argc, char** argv) {
   da::process::Process* current_process = nullptr;
   auto& processes = *processes_or;
   for (const auto& process : processes) {
-    std::cerr << "Dependencies for process " << process->getId() << ": ";
-    process->printDependencies();
     if (!process->isCurrent()) {
       continue;
     }
     current_process = process.get();
   }
-  exit(1);
   if (current_process == nullptr) {
     LOG(da::util::Status(da::util::StatusCode::kNotFound,
                          "Could not find current process."));
@@ -153,14 +151,14 @@ int main(int argc, char** argv) {
   // Create a uniform reliable broadcast object.
   auto urb = std::make_unique<da::broadcast::UniformReliable>(
       current_process, std::move(perfect_links));
-  // Create a uniform FIFO reliable broadcast object.
-  auto fifo_urb = std::make_unique<da::broadcast::UniformFIFOReliable>(
-      current_process, std::move(urb), processes.size(), file_logger.get());
+  // Create a uniform localized causal reliable broadcast object.
+  auto lc_urb = std::make_unique<da::broadcast::UniformLocalizedCausal>(
+      current_process, std::move(urb), std::move(processes), file_logger.get());
   // Launch a thread that will be receiving packets.
   receiver =
       std::make_unique<da::receiver::Receiver>(executor.get(), sock.get());
-  receiver_thread = std::make_unique<std::thread>(
-      [&fifo_urb]() { (*receiver)(fifo_urb.get()); });
+  receiver_thread =
+      std::make_unique<std::thread>([&lc_urb]() { (*receiver)(lc_urb.get()); });
   // Loop until SIGUSR2 hasn't received or an exit is called.
   while (!can_start && !da::kCanStop) {
     struct timespec sleep_time;
@@ -175,7 +173,7 @@ int main(int argc, char** argv) {
       break;
     }
     const std::string msg = da::util::integerToString<int>(id);
-    fifo_urb->broadcast(&msg);
+    lc_urb->broadcast(&msg);
   }
   // Loop infinitely. Signal handler will set `kCanStop` to false.
   while (!da::kCanStop) {
