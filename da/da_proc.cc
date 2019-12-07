@@ -114,11 +114,14 @@ int main(int argc, char** argv) {
   da::process::Process* current_process = nullptr;
   auto& processes = *processes_or;
   for (const auto& process : processes) {
+    std::cerr << "Dependencies for process " << process->getId() << ": ";
+    process->printDependencies();
     if (!process->isCurrent()) {
       continue;
     }
     current_process = process.get();
   }
+  exit(1);
   if (current_process == nullptr) {
     LOG(da::util::Status(da::util::StatusCode::kNotFound,
                          "Could not find current process."));

@@ -73,13 +73,14 @@ bool UniformFIFOReliable::shouldBroadcast() {
   if (broadcast_msgs_ - num_delivered > 4375 * std::min(num_threads, 6)) {
     return false;
   }
-  int num_undelivered = 0;
-  for (const auto& process_data : process_data_) {
-    num_undelivered += process_data->getUndeliveredMessages();
-  }
-  if (num_undelivered > 2500 * std::min(num_threads, 6)) {
-    return false;
-  }
+  // FIXME: Correct the heuristic.
+  // int num_undelivered = 0;
+  // for (const auto& process_data : process_data_) {
+  //   num_undelivered += process_data->getUndeliveredMessages();
+  // }
+  // if (num_undelivered > 2500 * std::min(num_threads, 6)) {
+  //   return false;
+  // }
   return true;
 }
 

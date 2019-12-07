@@ -2,6 +2,7 @@
 #define __INCLUDED_DA_PROCESS_PROCESS_H_
 
 #include <ostream>
+#include <set>
 #include <string>
 
 namespace da {
@@ -27,6 +28,12 @@ class Process {
 
   bool isCurrent() const { return current_; }
 
+  void addDependency(int id) { dependencies_.insert(id); }
+
+  const std::set<int>& getDependencies() const { return dependencies_; }
+
+  void printDependencies() const;
+
  private:
   friend std::ostream& operator<<(std::ostream&, const Process&);
 
@@ -37,6 +44,8 @@ class Process {
   const int message_count_;
   // Denotes if this process is the one that is actually running.
   const bool current_;
+  // Denotes the process ids this process is dependent on.
+  std::set<int> dependencies_;
 };
 
 }  // namespace process

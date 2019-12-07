@@ -4,6 +4,7 @@
 #include <climits>
 #include <fstream>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,15 @@
 namespace da {
 namespace init {
 namespace {
+
+bool isNumeric(const std::string& str) {
+  for (long unsigned int i = 0; i < str.length(); i++) {
+    if (!std::isdigit(str[i])) {
+      return false;
+    }
+  }
+  return true;
+}
 
 util::StatusOr<std::vector<std::unique_ptr<process::Process>>>
 parseMembershipFile(const char* file, int current_process_id, int messages) {
@@ -32,6 +42,7 @@ parseMembershipFile(const char* file, int current_process_id, int messages) {
         "Number of processes: " + std::to_string(no_of_processes) +
             " is out of bounds.");
   }
+  // Read process ip and port.
   std::vector<std::unique_ptr<process::Process>> processes(no_of_processes);
   for (int i = 0; i < no_of_processes; i++) {
     if (!membership.good()) {
@@ -54,7 +65,52 @@ parseMembershipFile(const char* file, int current_process_id, int messages) {
     processes[process_id] = std::make_unique<process::Process>(
         process_id, ip_addr, port, messages, current_process_id == process_id);
   }
-  // TODO: Read extra parameters for Localized Causal Broadcast here.
+
+  // Read localized dependencies.
+  std::string line;
+  std::string element;
+  // Go to the next line.
+  std::getline(membership, line);
+  while (!membership.eof()) {
+    int current_process = -1;
+    std::getline(membership, line);
+    std::stringstream linestream(line);
+    while (!linestream.eof()) {
+      // Read each element of the line split by a space.
+      std::getline(linestream, element, ' ');
+      // Ignore empty elements caused by potential additional spaces.
+      if (element.length() == 0) {
+        continue;
+      }
+      // Terminate if a non-numeric element is found.
+      if (!isNumeric(element)) {
+        membership.close();
+        return util::Status(util::StatusCode::kInvalidArgument,
+                            element + " is not a process id.");
+      }
+      // Set current_process if it is the first element of the line.
+      if (current_process == -1) {
+        current_process = std::stoi(element) - 1;
+      }
+      int dependency = std::stoi(element) - 1;
+      // Terminate if the current process id is out of bounds.
+      if (current_process < 0 || current_process >= no_of_processes) {
+        membership.close();
+        return util::Status(util::StatusCode::kOutOfRange,
+                            "Process id: " + std::to_string(current_process) +
+                                " is out of bounds.");
+      }
+      // Terminate if the dependency id is out of bounds
+      if (dependency < 0 || dependency >= no_of_processes) {
+        membership.close();
+        return util::Status(
+            util::StatusCode::kOutOfRange,
+            "Process id: " + std::to_string(dependency) + " is out of bounds.");
+      }
+      // Add dependency to current process.
+      processes[current_process]->addDependency(dependency);
+    }
+  }
   membership.close();
   return processes;
 }
