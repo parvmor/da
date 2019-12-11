@@ -138,9 +138,9 @@ void UniformLocalizedCausal::triggerDeliveries(int init_process_id) {
                          unpackMessage(*msg, no_of_dependencies));
       vector_clock_[process_id] += 1;
       enqueue_msgs(process_id);
-      return;
     }
   }
+  return;
 }
 
 bool UniformLocalizedCausal::deliver(const std::string& msg) {
