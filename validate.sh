@@ -9,7 +9,7 @@ fi
 
 # time to wait for correct processes to broadcast all messages (in seconds)
 # (should be adapted to the number of messages to send)
-time_to_finish=2
+time_to_finish=40
 
 init_time=2
 
@@ -115,7 +115,13 @@ do
     fi
 done
 
-# check logs for correctness
-./check_output.sh 1 3 5
+if [ "$1" = "FIFO" ]; then
+  # check logs for correctness
+  ./check_output.sh 1 3 5
+else
+  ./check_output_lc.sh
+fi
+
+
 
 echo "Correctness test done."

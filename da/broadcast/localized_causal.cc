@@ -1,4 +1,11 @@
 #include <da/broadcast/localized_causal.h>
+#include <da/broadcast/uniform_reliable.h>
+#include <da/da_proc.h>
+#include <da/process/process.h>
+#include <da/util/logging.h>
+#include <da/util/util.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <deque>
@@ -7,14 +14,6 @@
 #include <queue>
 #include <unordered_map>
 #include <vector>
-
-#include <da/broadcast/uniform_reliable.h>
-#include <da/da_proc.h>
-#include <da/process/process.h>
-#include <da/util/logging.h>
-#include <da/util/util.h>
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/spdlog.h>
 
 namespace da {
 namespace broadcast {
@@ -43,8 +42,9 @@ inline int unpackMessage(const std::string& msg, int no_of_dependencies) {
 
 }  // namespace
 
-int lcb_min_length = 0;
-int lcb_max_length = 0;
+int lcb_min_length = urb_min_length + sizeof(uint16_t) + 2 * sizeof(int);
+// This value is overwritten in da_proc.cc
+int lcb_max_length = urb_min_length + sizeof(uint16_t) + 2 * sizeof(int);
 
 UniformLocalizedCausal::UniformLocalizedCausal(
     const process::Process* local_process, std::unique_ptr<UniformReliable> urb,
@@ -92,6 +92,8 @@ void UniformLocalizedCausal::broadcast(const std::string* msg) {
     std::unique_lock<std::mutex> lock(mutex_);
     id = constructIdentity(msg);
     file_logger_->info("b {}", da::util::stringToInteger<int>(*msg));
+    file_logger_->info("d {} {}", local_process_->getId() + 1,
+                       da::util::stringToInteger<int>(*msg));
     vector_clock_[local_process_->getId()] += 1;
   }
   urb_->broadcast(identity_manager_.getValue(id));
@@ -132,7 +134,7 @@ void UniformLocalizedCausal::triggerDeliveries(int init_process_id) {
       const std::string* msg = identity_manager_.getValue(msg_id);
       int process_id = unpackProcessId(*msg);
       int no_of_dependencies = processes_[process_id]->getDependencies().size();
-      file_logger_->info("d {} {}", unpackProcessId(*msg),
+      file_logger_->info("d {} {}", unpackProcessId(*msg) + 1,
                          unpackMessage(*msg, no_of_dependencies));
       vector_clock_[process_id] += 1;
       enqueue_msgs(process_id);
@@ -150,6 +152,10 @@ bool UniformLocalizedCausal::deliver(const std::string& msg) {
                             msg.size() - urb_min_length);
   int id = identity_manager_.assignId(broadcast_msg);
   int process_id = unpackProcessId(broadcast_msg);
+  // Quickfix to enable delivery at the moment of broadcast
+  if (process_id == local_process_->getId()) {
+    return true;
+  }
   const auto& dependencies = processes_[process_id]->getDependencies();
   std::vector<int> msg_vector_clock =
       unpackVectorClock(broadcast_msg, dependencies.size());
@@ -184,8 +190,8 @@ bool UniformLocalizedCausal::deliver(const std::string& msg) {
     return true;
   }
   // We can deliver this message!
-  file_logger_->info("d {} {}", process_id,
-                     unpackMessage(msg, dependencies.size()));
+  file_logger_->info("d {} {}", process_id + 1,
+                     unpackMessage(broadcast_msg, dependencies.size()));
   vector_clock_[process_id] += 1;
   triggerDeliveries(process_id);
   return true;

@@ -1,13 +1,3 @@
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <atomic>
-#include <cassert>
-#include <functional>
-#include <memory>
-#include <thread>
-
 #include <da/broadcast/localized_causal.h>
 #include <da/broadcast/uniform_reliable.h>
 #include <da/da_proc.h>
@@ -20,8 +10,18 @@
 #include <da/util/logging.h>
 #include <da/util/statusor.h>
 #include <da/util/util.h>
+#include <signal.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#include <atomic>
+#include <cassert>
+#include <functional>
+#include <memory>
+#include <thread>
 
 namespace da {
 
@@ -43,8 +43,10 @@ void registerUsrHandlers() {
   // Register a function to toggle the can_start when SIGUSR{1,2} is received.
   // NOTE: Lambda and function pointers have different types and hence, a
   // positive lambda has been used.
-  signal(SIGUSR1, +[](int signum) { can_start = true; });
-  signal(SIGUSR2, +[](int signum) { can_start = true; });
+  signal(
+      SIGUSR1, +[](int signum) { can_start = true; });
+  signal(
+      SIGUSR2, +[](int signum) { can_start = true; });
 }
 
 void exitHandler(int signum) {
@@ -115,6 +117,10 @@ int main(int argc, char** argv) {
   da::process::Process* current_process = nullptr;
   auto& processes = *processes_or;
   for (const auto& process : processes) {
+    da::broadcast::lcb_max_length =
+        std::max(da::broadcast::lcb_max_length,
+                 int(da::broadcast::urb_min_length + sizeof(uint16_t) +
+                     (1 + process->getDependencies().size()) * sizeof(int)));
     if (!process->isCurrent()) {
       continue;
     }

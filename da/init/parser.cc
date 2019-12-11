@@ -1,15 +1,14 @@
 #include <da/init/parser.h>
-
+#include <da/process/process.h>
+#include <da/util/statusor.h>
 #include <unistd.h>
+
 #include <climits>
 #include <fstream>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
-
-#include <da/process/process.h>
-#include <da/util/statusor.h>
 
 namespace da {
 namespace init {
@@ -110,7 +109,9 @@ parseMembershipFile(const char* file, int current_process_id, int messages) {
       // Add dependency to current process.
       processes[current_process]->addDependency(dependency);
     }
-    processes[current_process]->finalizeDependencies();
+    if (current_process != -1) {
+      processes[current_process]->finalizeDependencies();
+    }
   }
   membership.close();
   return processes;

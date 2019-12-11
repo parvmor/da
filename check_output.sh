@@ -3,7 +3,7 @@
 # Checks the output of processes.
 #
 
-echo -e "\nTESTING PROCESS OUTPUT.\n"
+echo -e "\nTESTING FIFO PROCESS OUTPUT.\n"
 
 while [ -n "$1" ]; do
     filename="da_proc_${1}.out"
