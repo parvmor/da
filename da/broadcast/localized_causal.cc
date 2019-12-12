@@ -1,11 +1,4 @@
 #include <da/broadcast/localized_causal.h>
-#include <da/broadcast/uniform_reliable.h>
-#include <da/da_proc.h>
-#include <da/process/process.h>
-#include <da/util/logging.h>
-#include <da/util/util.h>
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <deque>
@@ -14,6 +7,14 @@
 #include <queue>
 #include <unordered_map>
 #include <vector>
+
+#include <da/broadcast/uniform_reliable.h>
+#include <da/da_proc.h>
+#include <da/process/process.h>
+#include <da/util/logging.h>
+#include <da/util/util.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/spdlog.h>
 
 namespace da {
 namespace broadcast {

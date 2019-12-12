@@ -1,7 +1,4 @@
 #include <da/init/parser.h>
-#include <da/process/process.h>
-#include <da/util/statusor.h>
-#include <unistd.h>
 
 #include <climits>
 #include <fstream>
@@ -9,6 +6,11 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include <unistd.h>
+
+#include <da/process/process.h>
+#include <da/util/statusor.h>
 
 namespace da {
 namespace init {
