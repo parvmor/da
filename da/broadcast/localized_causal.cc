@@ -54,7 +54,8 @@ UniformLocalizedCausal::UniformLocalizedCausal(
     : local_process_(local_process),
       urb_(std::move(urb)),
       processes_(std::move(processes)),
-      file_logger_(file_logger) {
+      file_logger_(file_logger),
+      broadcast_msgs_(0) {
   process_to_messages_.reserve(processes_.size());
   vector_clock_.assign(processes_.size(), 0);
 }
@@ -78,7 +79,18 @@ bool UniformLocalizedCausal::deliverToURB(const std::string& msg) {
   return true;
 }
 
-bool UniformLocalizedCausal::shouldBroadcast() { return true; }
+inline bool UniformLocalizedCausal::shouldBroadcast() {
+  int num_threads = std::thread::hardware_concurrency();
+  // Create a copy of the vector clock.
+  std::vector<int> delivered_msgs = vector_clock_;
+  std::sort(delivered_msgs.begin(), delivered_msgs.end());
+  int index = (delivered_msgs.size() + 1) / 2;
+  int unreceived_msgs = broadcast_msgs_ - delivered_msgs[index];
+  if (unreceived_msgs > 1500 * std::min(num_threads, 6)) {
+    return false;
+  }
+  return true;
+}
 
 void UniformLocalizedCausal::broadcast(const std::string* msg) {
   while (!shouldBroadcast()) {
@@ -88,6 +100,7 @@ void UniformLocalizedCausal::broadcast(const std::string* msg) {
       return;
     }
   }
+  broadcast_msgs_ += 1;
   int id;
   {
     std::unique_lock<std::mutex> lock(mutex_);
@@ -153,7 +166,7 @@ bool UniformLocalizedCausal::deliver(const std::string& msg) {
                             msg.size() - urb_min_length);
   int id = identity_manager_.assignId(broadcast_msg);
   int process_id = unpackProcessId(broadcast_msg);
-  // Quickfix to enable delivery at the moment of broadcast
+  // Quickfix to enable delivery at the moment of broadcast.
   if (process_id == local_process_->getId()) {
     return true;
   }

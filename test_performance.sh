@@ -34,7 +34,7 @@ for i in `seq 1 5`; do
   # valgrind --tool=helgrind \
   #   --log-file=helgrind-logs/logs-$i.txt \
   #   ./da_proc $i membership 3000 &
-  ./da_proc $i membership 10000 &
+  ./da_proc $i membership 400000 &
   da_proc_id[$i]=$!
 done
 

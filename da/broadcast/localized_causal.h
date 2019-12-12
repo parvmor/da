@@ -40,7 +40,7 @@ class UniformLocalizedCausal {
 
   // Uses a heuristic to decide if we should stop broadcasting messages for a
   // while.
-  bool shouldBroadcast();
+  inline bool shouldBroadcast();
 
   // Updates the watched indices of messages that were dependent on this process
   // id. Might deliver a message if there is no more index to be watched.
@@ -53,6 +53,9 @@ class UniformLocalizedCausal {
   spdlog::logger* file_logger_;
   // Used to assign a unique identity to the messages.
   util::IdentityManager<std::string> identity_manager_;
+
+  // Account keeping for heuristics.
+  std::atomic<int> broadcast_msgs_;
 
   std::mutex mutex_;
   // A map from process id to number of messages that you need to deliver the
