@@ -65,7 +65,7 @@ if [ ! $? -eq 0 ]; then
 fi
 
 for i in `seq 1 5`; do
-  msg=$( cat da_proc_$i.out | grep '^d' | wc -l )
+  msg=$( cat da_proc_$i.out | grep '^d' | grep -v "^d $i" | wc -l )
   echo "Process $i delivered $msg."
 done
 
