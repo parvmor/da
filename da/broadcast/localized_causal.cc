@@ -113,9 +113,9 @@ void UniformLocalizedCausal::broadcast(const std::string* msg) {
     // constructing identity.
     std::unique_lock<std::mutex> lock(mutex_);
     id = constructIdentity(msg);
+    file_logger_->info("b {}", da::util::stringToInteger<int>(*msg));
   }
   broadcast_msgs_ += 1;
-  file_logger_->info("b {}", da::util::stringToInteger<int>(*msg));
   urb_->broadcast(identity_manager_.getValue(id));
 }
 

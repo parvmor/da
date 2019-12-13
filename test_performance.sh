@@ -17,10 +17,10 @@ echo "5
 3 127.0.0.1 12003
 4 127.0.0.1 12004
 5 127.0.0.1 12005
-1 1 3 4 5
+1 1 3 5
 2 1 2 3 5
-3 1 2 3 4 5
-4 1 2 4 5
+3 1 3 4 5
+4 1 2 5
 5 1 2 5" > membership
 
 for i in `seq 1 5`; do
@@ -34,7 +34,7 @@ for i in `seq 1 5`; do
   # valgrind --tool=helgrind \
   #   --log-file=helgrind-logs/logs-$i.txt \
   #   ./da_proc $i membership 3000 &
-  ./da_proc $i membership 400000 &
+  ./da_proc $i membership 4000000 &
   da_proc_id[$i]=$!
 done
 
@@ -62,6 +62,7 @@ done
 ./check_lc.py
 if [ ! $? -eq 0 ]; then
   echo "LCausal order is not respected."
+  exit 1
 fi
 
 for i in `seq 1 5`; do
