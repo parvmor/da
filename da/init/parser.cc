@@ -74,6 +74,10 @@ parseMembershipFile(const char* file, int current_process_id, int messages) {
   std::getline(membership, line);
   int current_process = 0;
   while (!membership.eof()) {
+    if (current_process >= no_of_processes) {
+      membership.close();
+      break;
+    }
     processes[current_process]->addDependency(current_process);
     std::getline(membership, line);
     std::stringstream linestream(line);
