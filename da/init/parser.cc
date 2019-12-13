@@ -72,8 +72,9 @@ parseMembershipFile(const char* file, int current_process_id, int messages) {
   std::string element;
   // Go to the next line.
   std::getline(membership, line);
+  int current_process = 0;
   while (!membership.eof()) {
-    int current_process = -1;
+    processes[current_process]->addDependency(current_process);
     std::getline(membership, line);
     std::stringstream linestream(line);
     while (!linestream.eof()) {
@@ -89,18 +90,7 @@ parseMembershipFile(const char* file, int current_process_id, int messages) {
         return util::Status(util::StatusCode::kInvalidArgument,
                             element + " is not a process id.");
       }
-      // Set current_process if it is the first element of the line.
-      if (current_process == -1) {
-        current_process = std::stoi(element) - 1;
-      }
       int dependency = std::stoi(element) - 1;
-      // Terminate if the current process id is out of bounds.
-      if (current_process < 0 || current_process >= no_of_processes) {
-        membership.close();
-        return util::Status(util::StatusCode::kOutOfRange,
-                            "Process id: " + std::to_string(current_process) +
-                                " is out of bounds.");
-      }
       // Terminate if the dependency id is out of bounds
       if (dependency < 0 || dependency >= no_of_processes) {
         membership.close();
@@ -111,9 +101,8 @@ parseMembershipFile(const char* file, int current_process_id, int messages) {
       // Add dependency to current process.
       processes[current_process]->addDependency(dependency);
     }
-    if (current_process != -1) {
-      processes[current_process]->finalizeDependencies();
-    }
+    processes[current_process]->finalizeDependencies();
+    current_process += 1;
   }
   membership.close();
   return processes;
