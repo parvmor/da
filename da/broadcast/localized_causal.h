@@ -56,6 +56,7 @@ class UniformLocalizedCausal {
 
   // Account keeping for heuristics.
   std::atomic<int> broadcast_msgs_;
+  std::atomic<int> delivered_msgs_;
 
   std::mutex mutex_;
   // A map from process id to number of messages that you need to deliver the

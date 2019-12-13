@@ -85,11 +85,7 @@ bool UniformLocalizedCausal::deliverToURB(const std::string& msg) {
 
 inline bool UniformLocalizedCausal::shouldBroadcast() {
   int num_threads = std::thread::hardware_concurrency();
-  // Create a copy of the vector clock.
-  std::vector<int> delivered_msgs = vector_clock_;
-  std::sort(delivered_msgs.begin(), delivered_msgs.end());
-  int index = (delivered_msgs.size() + 1) / 2;
-  int unreceived_msgs = broadcast_msgs_ - delivered_msgs[index];
+  int unreceived_msgs = broadcast_msgs_ - delivered_msgs_;
   if (unreceived_msgs > 1500 * std::min(num_threads, 6)) {
     return false;
   }
@@ -149,8 +145,11 @@ void UniformLocalizedCausal::triggerDeliveries(int init_process_id) {
       const std::string* msg = identity_manager_.getValue(msg_id);
       int process_id = unpackProcessId(*msg);
       int no_of_dependencies = processes_[process_id]->getDependencies().size();
-      file_logger_->info("d {} {}", unpackProcessId(*msg) + 1,
+      file_logger_->info("d {} {}", process_id + 1,
                          unpackMessage(*msg, no_of_dependencies));
+      if (process_id == local_process_->getId()) {
+        delivered_msgs_ += 1;
+      }
       vector_clock_[process_id] += 1;
       enqueue_msgs(process_id);
     }
@@ -203,6 +202,9 @@ bool UniformLocalizedCausal::deliver(const std::string& msg) {
   // We can deliver this message!
   file_logger_->info("d {} {}", process_id + 1,
                      unpackMessage(broadcast_msg, dependencies.size()));
+  if (process_id == local_process_->getId()) {
+    delivered_msgs_ += 1;
+  }
   vector_clock_[process_id] += 1;
   triggerDeliveries(process_id);
   return true;
