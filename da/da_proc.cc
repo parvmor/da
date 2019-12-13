@@ -167,10 +167,7 @@ int main(int argc, char** argv) {
       std::make_unique<std::thread>([&lc_urb]() { (*receiver)(lc_urb.get()); });
   // Loop until SIGUSR2 hasn't received or an exit is called.
   while (!can_start && !da::kCanStop) {
-    struct timespec sleep_time;
-    sleep_time.tv_sec = 0;
-    sleep_time.tv_nsec = 1000;
-    nanosleep(&sleep_time, NULL);
+    da::util::nanosleep(1000);
   }
   // Start to broadcast messages.
   LOG("Broadcasting messages...");
@@ -184,10 +181,7 @@ int main(int argc, char** argv) {
   // Loop infinitely. Signal handler will set `kCanStop` to false.
   while (!da::kCanStop) {
     // Sleep for 100 milli-seconds.
-    struct timespec sleep_time;
-    sleep_time.tv_sec = 0;
-    sleep_time.tv_nsec = 100000000;
-    nanosleep(&sleep_time, NULL);
+    da::util::nanosleep(100000000);
   }
   exitThreads();
   // Exit the program.
