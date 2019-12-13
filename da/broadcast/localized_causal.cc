@@ -65,7 +65,11 @@ int UniformLocalizedCausal::constructIdentity(const std::string* msg) {
   std::string broadcast_msg = ""s;
   broadcast_msg += util::integerToString<uint16_t>(local_process_->getId());
   for (const auto& dependency : local_process_->getDependencies()) {
-    broadcast_msg += util::integerToString<int>(vector_clock_[dependency]);
+    if (dependency == local_process_->getId()) {
+      broadcast_msg += util::integerToString<int>(broadcast_msgs_);
+    } else {
+      broadcast_msg += util::integerToString<int>(vector_clock_[dependency]);
+    }
   }
   broadcast_msg += *msg;
   return identity_manager_.assignId(broadcast_msg);
@@ -100,16 +104,13 @@ void UniformLocalizedCausal::broadcast(const std::string* msg) {
       return;
     }
   }
-  broadcast_msgs_ += 1;
   int id;
   {
     std::unique_lock<std::mutex> lock(mutex_);
     id = constructIdentity(msg);
     file_logger_->info("b {}", da::util::stringToInteger<int>(*msg));
-    file_logger_->info("d {} {}", local_process_->getId() + 1,
-                       da::util::stringToInteger<int>(*msg));
-    vector_clock_[local_process_->getId()] += 1;
   }
+  broadcast_msgs_ += 1;
   urb_->broadcast(identity_manager_.getValue(id));
 }
 
@@ -166,10 +167,6 @@ bool UniformLocalizedCausal::deliver(const std::string& msg) {
                             msg.size() - urb_min_length);
   int id = identity_manager_.assignId(broadcast_msg);
   int process_id = unpackProcessId(broadcast_msg);
-  // Quickfix to enable delivery at the moment of broadcast.
-  if (process_id == local_process_->getId()) {
-    return true;
-  }
   const auto& dependencies = processes_[process_id]->getDependencies();
   std::vector<int> msg_vector_clock =
       unpackVectorClock(broadcast_msg, dependencies.size());
